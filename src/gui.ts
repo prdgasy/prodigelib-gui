@@ -4,8 +4,6 @@ import {
   forceload, loot, Variable, clear, LootTable, give
 } from 'sandstone'
 
-// COMMENT
-
 import { LabelClass, ObjectiveClass } from 'sandstone/variables'
 
 class Item {
