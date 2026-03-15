@@ -17,8 +17,7 @@
   },
   "include": [
     "sandstone.config.ts",
-    "src",
-    "node_modules"
+    "src"
   ],
   "exclude": [
     "node_modules"

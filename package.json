@@ -1,9 +1,10 @@
 {
-  "name": "sandstone-template",
+  "name": "@prodigelib/gui",
+  "@prodigelib/gui": "github:prdgasy/prodigelib-gui",
   "version": "0.0.1",
   "description": "A pack created with Sandstone",
   "type": "module",
-  "module": "src/index.ts",
+  "module": "src/test.ts",
   "scripts": {
     "dev:watch": "sand watch",
     "dev:build": "sand build"
