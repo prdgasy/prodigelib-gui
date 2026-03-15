@@ -1,0 +1,9 @@
+node_modules
+.vscode
+.env
+.sandstone
+resources/cache
+spyglass.json
+sandstone.config.ts
+CLAUDE.md
+src/test.ts
