@@ -6,41 +6,6 @@ import {
 
 import { LabelClass, ObjectiveClass } from 'sandstone/variables'
 
-class Item {
-  id: ITEMS
-  name?: string
-  lore?: string[]
-  components?: string[]
-
-
-  constructor(itemId: ITEMS, name?: string, lore?: string[], components?: string[]) {
-    this.id = itemId
-    this.name = name
-    this.lore = lore
-    this.components = components
-  }
-
-  convertLore(): string[] {
-    const loreEmit: string[] = []
-    if (this.lore) {
-      this.lore.forEach(line => {
-        loreEmit.push(`{text:"${line}"}`)
-      })
-    }
-    return loreEmit
-  }
-
-  toString() {
-    const loreEmit = this.convertLore()
-    if (this.components) {
-      return `${this.id}[${this.components.toString()},custom_name={text:"${this.name}"}, lore=[${loreEmit.toString()}]]`
-    } else {
-      return `${this.id}[custom_name={text:"${this.name}"}, lore=[${loreEmit.toString()}]]`
-    }
-
-  }
-}
-
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -56,6 +21,16 @@ export type MacroArg = {
 }
 
 /**
+ * Text type
+ */
+export type JSONGUITextType = {
+  text: string
+  color?: string
+  italic?: boolean
+  bold?: boolean
+}
+
+/**
  * Represents a clickable GUI button.
  */
 export type Button = {
@@ -64,15 +39,14 @@ export type Button = {
   slot: number
   count?: number
 
-  name?: string
-  lore?: string[]
+  name?: JSONGUITextType
+  lore?: JSONGUITextType[]
   components?: string[]
   customDataComponentAdded?: boolean
 
   onClick?: MCFunctionType
 
   macroArgs?: MacroArg[]
-  isFiller?: boolean
 }
 
 /**
@@ -85,7 +59,6 @@ export type GUIPage = {
 }
 
 
-LootTable('minecraft:blocks/yellow_shulker_box', { type: "minecraft:block", pools: [{ rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:item", name: "minecraft:yellow_shulker_box", functions: [{ function: "minecraft:copy_components", source: "block_entity", include: ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], conditions: [{ condition: "minecraft:inverted", term: { condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } } }] }, { rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:dynamic", name: "minecraft:contents" }], conditions: [{ condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } }] }], random_sequence: "minecraft:blocks/yellow_shulker_box", __smithed__: { priority: { stage: "early" }, rules: [{ type: "append", target: "pools[0].conditions", source: { type: "reference", path: "pools[0].conditions[0]" } }, { type: "append", target: "pools", source: { type: "reference", path: "pools[1]" } }] } } as any)
 /* -------------------------------------------------------------------------- */
 /*                                   GUI                                      */
 /* -------------------------------------------------------------------------- */
@@ -134,12 +107,26 @@ export class GUI {
     forceload.add([930005, 930005])
   }
 
-  /**
- * Converts the button into a valid Minecraft item string.
- */
-  static buttonToString(button: Button): string {
-    return new Item(button.id, button.name, button.lore, button.components).toString()
+  static resolveJSONText(text: JSONGUITextType | JSONGUITextType[]): string {
+    if ('text' in text) {
+      text.color = text.color ?? 'white'
+      text.italic = text.italic ?? false
+      text.bold = text.bold ?? false
+      return '{text: "' + text.text + '", color: "' + text.color + '", italic: ' + text.italic + ', bold: ' + text.bold + '}'
+    }
+    else {
+      return text.map(l => GUI.resolveJSONText(l)).join(',')
+    }
   }
+
+  /**
+   * Converts the button into a valid Minecraft item string.
+   */
+  static buttonToString(button: Required<Button>): string {
+    return `${button.id}[${button.components.toString()},custom_name=${GUI.resolveJSONText(button.name)}, lore=[${GUI.resolveJSONText(button.lore)})]]`
+  }
+
+
 
   /* -------------------------------------------------------------------------- */
   /*                             ENTITY MANAGEMENT                              */
@@ -289,7 +276,7 @@ export class GUI {
           if (button.components) button.components.push(`custom_data={${this.name}: 1b}`)
           button.customDataComponentAdded = true
         }
-        const buttonString = GUI.buttonToString(button)
+        const buttonString = GUI.buttonToString(button as any) // Changer
 
         if (button.macroArgs) {
 
@@ -325,12 +312,10 @@ export class GUI {
     return MCFunction(`__gui/${this.name}/pages/click/${newPageId}`, () => {
 
       page.buttons.forEach(button => {
-        if (!button.isFiller && button.onClick) {
+        if (button.onClick) {
           _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
             if (button.onClick) { button.onClick(); this.refresh() }
           })
-        } else if (button.isFiller && button.onClick) {
-          throw Error(`Button: ${button.id} (${button}) is marked as filler but has an onClick function`)
         } else {
           _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
             this.refresh()
@@ -501,3 +486,7 @@ export class GUI {
   }
 
 }
+
+// loot table
+
+LootTable('minecraft:blocks/yellow_shulker_box', { type: "minecraft:block", pools: [{ rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:item", name: "minecraft:yellow_shulker_box", functions: [{ function: "minecraft:copy_components", source: "block_entity", include: ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], conditions: [{ condition: "minecraft:inverted", term: { condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } } }] }, { rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:dynamic", name: "minecraft:contents" }], conditions: [{ condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } }] }], random_sequence: "minecraft:blocks/yellow_shulker_box", __smithed__: { priority: { stage: "early" }, rules: [{ type: "append", target: "pools[0].conditions", source: { type: "reference", path: "pools[0].conditions[0]" } }, { type: "append", target: "pools", source: { type: "reference", path: "pools[1]" } }] } } as any)
