@@ -475,10 +475,7 @@ export namespace GUI {
      * Switches the GUI to another page.
      */
     public toPage(page: Page) {
-
       this.pageIdScore.set(page.id as number)
-
-      this.refresh()
     }
 
   }
