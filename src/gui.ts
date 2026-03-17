@@ -10,6 +10,7 @@ import { LabelClass, ObjectiveClass } from 'sandstone/variables'
 export type MCFunctionType = ReturnType<typeof MCFunction>;
 type ITEMS = Parameters<typeof give>[1];
 type IFCondition = Parameters<typeof _.if>[0];
+
 /**
  * Main GUI controller.
  * Handles page management, click detection and entity linking.
@@ -46,17 +47,18 @@ export namespace GUI {
 
     onClick?: MCFunctionType | (() => void);
 
-    condition?: IFCondition;
-
     macroArgs?: MacroArgument[];
   };
+
+  type Instruction = (MCFunctionType | (() => void) | Button)
 
   /**
    * Represents a GUI page.
    */
   export type Page = {
     name: string;
-    buttons: Button[];
+    Instructions: Instruction[];
+    clickInstruction: Instruction[];
     id?: number;
   };
 
@@ -67,6 +69,7 @@ export namespace GUI {
 
     Pages: Page[] = []
     pageId = 0
+    macroCounter: Record<number, number> = {}
 
     pageIdScore: Score
 
@@ -251,62 +254,80 @@ export namespace GUI {
     /**
      * Generates the function that fills the inventory for a page.
      */
-    filler(page: Page, macroId: number, pageId: number): MCFunctionType {
-      return MCFunction(`__gui/${this.name}/pages/fill/${pageId}`, () => {
-        page.buttons.forEach(button => this.emitButton(button, macroId, pageId))
+    filler(page: Page & Required<Pick<Page, 'id'>>): MCFunctionType {
+      return MCFunction(`__gui/${this.name}/pages/fill/${page.id}`, () => {
+        page.Instructions.forEach(fillInstruction => this.processButton(page, fillInstruction))
       })
     }
 
-    emitButton(button: Button, macroId: number, pageId: number) {
+    // TYPE GUARD
+    static isButton(fillInstruction: Instruction): fillInstruction is Button {
+      return 'slot' in fillInstruction;
+    }
+
+    processButton(page: Page & Required<Pick<Page, 'id'>>, fillInstruction: Instruction) {
+      if (Init.isButton(fillInstruction)) {
+        this.placeItem(page, fillInstruction);
+      } else {
+        fillInstruction();
+      }
+    }
+
+    placeItem(page: Page, button: Button) {
+      // add custom_data if not already
       if (!button.customDataComponentAdded) {
         button.components = button.components ?? [];
         if (button.components) button.components.push(`custom_data={${this.name}: 1b}`);
         button.customDataComponentAdded = true;
       }
+
       const buttonString = Init.buttonToString(button as any);
-      const placeItem = () => {
-        if (button.macroArgs) {
-          this.setMacroArgs(button);
-          functionCmd(
-            MCFunction(`__gui/${this.name}/pages/fill/${pageId}/macro_${macroId++}`, () => {
-              raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
-            }),
-            'with',
-            'storage',
-            'prodiges_skills:gui',
-            'pushPage'
-          );
-        } else {
-          raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
 
-        }
-      }
-
-      if (button.condition) {
-        _.if(button.condition, () => { placeItem() })
+      if (button.macroArgs) {
+        this.setMacroArgs(button);
+        functionCmd(
+          MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
+            raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
+          }),
+          'with',
+          'storage',
+          'prodiges_skills:gui',
+          'pushPage'
+        );
       } else {
-        placeItem();
-      }
+        raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
 
+      }
     }
 
     /**
      * Generates the click detection function for a page.
      */
-    clicker(page: Page, pageId: number): MCFunctionType {
-      return MCFunction(`__gui/${this.name}/pages/click/${pageId}`, () => {
-        page.buttons.forEach(button => {
-          if (button.onClick) {
-            _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
-              if (button.onClick) { button.onClick(); this.refresh() }
-            })
-          } else {
-            _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
-              this.refresh()
-            })
-          }
-        })
+    clicker(page: Page): MCFunctionType {
+      return MCFunction(`__gui/${this.name}/pages/click/${page.id}`, () => {
+        page.clickInstruction.forEach(instruction => this.processClickedButton(instruction))
       })
+    }
+
+    processClickedButton(clickInstruction: Instruction) {
+      if (Init.isButton(clickInstruction)) {
+        this.detectClick(clickInstruction);
+      } else {
+        clickInstruction()
+      }
+
+    }
+
+    detectClick(clickInstruction: Button) {
+      if (clickInstruction.onClick) {
+        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${clickInstruction.slot}b}]`))), () => {
+          if (clickInstruction.onClick) { clickInstruction.onClick(); this.refresh() }
+        })
+      } else {
+        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${clickInstruction.slot}b}]`))), () => {
+          this.refresh()
+        })
+      }
     }
 
 
@@ -460,16 +481,17 @@ export namespace GUI {
      * Adds a page to the GUI.
      */
     public pushPage(page: Page) {
-      if (this.Pages.includes(page)) throw Error(`The page ${page.name} already exists`)
-      const newPageId = this.pageId++
-      let macroId = 0
+      if (this.Pages.includes(page)) throw Error(`The page ${page.name} already exists`);
 
-      page.id = newPageId
+      page.id = this.pageId++
+      this.macroCounter[page.id] = 0
 
-      this.Pages.push(page)
+      const pageWithId = page as Page & { id: number }
 
-      this.filler(page, macroId, newPageId)
-      this.clicker(page, newPageId)
+      this.Pages.push(pageWithId)
+
+      this.filler(pageWithId)
+      this.clicker(pageWithId)
     }
 
     /**
