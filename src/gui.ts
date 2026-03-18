@@ -2,10 +2,12 @@ import {
   _, Data, execute, Label, MCFunction, Objective, rel, Score, scoreboard,
   Selector, summon, tellraw, functionCmd, raw, kill, tp, abs,
   forceload, loot, Variable, clear, LootTable, give,
-  MCFunctionClass
+  MCFunctionClass,
+  say,
+  sandstonePack
 } from 'sandstone'
 
-import { LabelClass, ObjectiveClass } from 'sandstone/variables'
+import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone/variables'
 
 export type MCFunctionType = ReturnType<typeof MCFunction>;
 type ITEMS = Parameters<typeof give>[1];
@@ -50,14 +52,14 @@ export namespace GUI {
     macroArgs?: MacroArgument[];
   };
 
-  type Instruction = (MCFunctionType | (() => void) | Button)
+  type Instruction = MCFunctionType | (() => void)
 
   /**
    * Represents a GUI page.
    */
   export type Page = {
     name: string;
-    Instructions: Instruction[];
+    Instructions: (Instruction | Button)[];
     clickInstruction: Instruction[];
     id?: number;
   };
@@ -71,7 +73,8 @@ export namespace GUI {
     pageId = 0
     macroCounter: Record<number, number> = {}
 
-    pageIdScore: Score
+    macroStorage: DataPointClass<'storage'>
+    pageIdScore: Score;
 
     Ids: ObjectiveClass
     GUILabel: LabelClass
@@ -86,6 +89,8 @@ export namespace GUI {
       this.triggerCmd = triggerCmd
 
       this.pageIdScore = Objective.create(`${name}.page`)('@s')
+
+      this.macroStorage = Data('storage', `${sandstonePack.defaultNamespace}:${this.name}`, 'macroKeys');
 
       this.Ids = Objective.create(`${name}.gui.id`)
       this.GUILabel = Label(`${name}.gui`)
@@ -125,12 +130,7 @@ export namespace GUI {
       return button.id + '['
         + button.components.toString() + namePart + lorePart
         + ']'
-
-
     }
-
-
-
     /* -------------------------------------------------------------------------- */
     /*                             ENTITY MANAGEMENT                              */
     /* -------------------------------------------------------------------------- */
@@ -247,10 +247,6 @@ export namespace GUI {
       })
     }
 
-
-
-
-
     /**
      * Generates the function that fills the inventory for a page.
      */
@@ -261,11 +257,11 @@ export namespace GUI {
     }
 
     // TYPE GUARD
-    static isButton(fillInstruction: Instruction): fillInstruction is Button {
+    static isButton(fillInstruction: Instruction | Button): fillInstruction is Button {
       return 'slot' in fillInstruction;
     }
 
-    processButton(page: Page & Required<Pick<Page, 'id'>>, fillInstruction: Instruction) {
+    processButton(page: Page & Required<Pick<Page, 'id'>>, fillInstruction: Instruction | Button) {
       if (Init.isButton(fillInstruction)) {
         this.placeItem(page, fillInstruction);
       } else {
@@ -282,21 +278,15 @@ export namespace GUI {
       }
 
       const buttonString = Init.buttonToString(button as any);
+      const fn = MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
+        raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
+      });
 
       if (button.macroArgs) {
-        this.setMacroArgs(button);
-        functionCmd(
-          MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
-            raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
-          }),
-          'with',
-          'storage',
-          'prodiges_skills:gui',
-          'pushPage'
-        );
+        this.setMacroArgs(page, button);
+        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((page.id as number).toString()).path}`);
       } else {
         raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
-
       }
     }
 
@@ -334,15 +324,12 @@ export namespace GUI {
     /**
      * Sets macro arguments inside storage.
      */
-    setMacroArgs(button: Button) {
-
+    setMacroArgs(page: Page, button: Button) {
       if (!button.macroArgs) {
         throw Error('No macro arguments given')
       }
-
       button.macroArgs.forEach(argument => {
-
-        Data('storage', 'prodiges_skills:gui', 'pushPage')
+        this.macroStorage.select((page.id as number).toString())
           .select(argument.key)
           .set(argument.value)
 
