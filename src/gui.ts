@@ -278,11 +278,12 @@ export namespace GUI {
       }
 
       const buttonString = Init.buttonToString(button as any);
-      const fn = MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
-        raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
-      });
+
 
       if (button.macroArgs) {
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
+          raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
+        });
         this.setMacroArgs(page, button);
         raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((page.id as number).toString()).path}`);
       } else {
