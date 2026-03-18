@@ -90,7 +90,7 @@ export namespace GUI {
 
       this.pageIdScore = Objective.create(`${name}.page`)('@s')
 
-      this.macroStorage = Data('storage', `${sandstonePack.defaultNamespace}:${this.name}`, 'macroKeys');
+      this.macroStorage = Data('storage', `${sandstonePack.defaultNamespace}:${this.name}`, '__gui.macroKeys');
 
       this.Ids = Objective.create(`${name}.gui.id`)
       this.GUILabel = Label(`${name}.gui`)
