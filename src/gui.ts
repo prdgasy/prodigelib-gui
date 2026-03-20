@@ -11,7 +11,6 @@ import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone/variables'
 
 export type MCFunctionType = ReturnType<typeof MCFunction>;
 type ITEMS = Parameters<typeof give>[1];
-type IFCondition = Parameters<typeof _.if>[0];
 
 /**
  * Main GUI controller.
@@ -52,16 +51,19 @@ export namespace GUI {
     macroArgs?: MacroArgument[];
   };
 
-  type Instruction = MCFunctionType | (() => void)
+  type Instruction = {
+    fill: () => void;
+    click: () => void;
+  }
 
   /**
    * Represents a GUI page.
    */
   export type Page = {
     name: string;
-    Instructions: (Instruction | Button)[];
-    clickInstruction: Instruction[];
+    Buttons?: (Button | Instruction)[];
     id?: number;
+    pushed?: boolean;
   };
 
   export class Init {
@@ -112,10 +114,14 @@ export namespace GUI {
       if (Array.isArray(text)) {
         return text.map(l => Init.resolveJSONText(l)).join(',')
       } else {
-        text.color = text.color ?? 'white'
-        text.italic = text.italic ?? false
-        text.bold = text.bold ?? false
-        return '{text: "' + text.text + '", color: "' + text.color + '", italic: ' + text.italic + ', bold: ' + text.bold + '}'
+        const t = {
+          ...text,
+          color: text.color ?? 'white',
+          italic: text.italic ?? false,
+          bold: text.bold ?? false
+        }
+
+        return '{text: "' + t.text + '", color: "' + t.color + '", italic: ' + t.italic + ', bold: ' + t.bold + '}'
       }
     }
 
@@ -236,6 +242,10 @@ export namespace GUI {
     /* -------------------------------------------------------------------------- */
     /*                              PAGE MANAGEMENT                               */
     /* -------------------------------------------------------------------------- */
+    // TYPE GUARD
+    static isButton(e: Instruction | Button): e is Button {
+      return 'slot' in e;
+    }
 
     /**
      * Initializes all pages.
@@ -247,29 +257,35 @@ export namespace GUI {
       })
     }
 
+    pushInstruction(page: Page, instruction: Instruction) {
+      if (page.pushed) throw Error(
+        `PRODIGELIB/GUI • Error: Page already pushed. \nTry using pushInstruction() before adding the page (${page.name}) to the menu (${this.name})`)
+      if (!page.Buttons) page.Buttons = [];
+      page.Buttons.push(instruction);
+    }
+
     /**
      * Generates the function that fills the inventory for a page.
      */
     filler(page: Page & Required<Pick<Page, 'id'>>): MCFunctionType {
       return MCFunction(`__gui/${this.name}/pages/fill/${page.id}`, () => {
-        page.Instructions.forEach(fillInstruction => this.processButton(page, fillInstruction))
+        page.Buttons?.forEach(e => this.readFillElement(e));
       })
     }
 
-    // TYPE GUARD
-    static isButton(fillInstruction: Instruction | Button): fillInstruction is Button {
-      return 'slot' in fillInstruction;
-    }
-
-    processButton(page: Page & Required<Pick<Page, 'id'>>, fillInstruction: Instruction | Button) {
-      if (Init.isButton(fillInstruction)) {
-        this.placeItem(page, fillInstruction);
+    readFillElement(e: Instruction | Button) {
+      if (Init.isButton(e)) {
+        this.placeItem(e);
       } else {
-        fillInstruction();
+        e.fill();
       }
     }
 
-    placeItem(page: Page, button: Button) {
+    /**
+     * Emit the button to a function
+     * @param button Button emited
+     */
+    placeItem(button: Button) {
       // add custom_data if not already
       if (!button.customDataComponentAdded) {
         button.components = button.components ?? [];
@@ -281,14 +297,29 @@ export namespace GUI {
 
 
       if (button.macroArgs) {
-        const fn = MCFunction(`__gui/${this.name}/pages/fill/${page.id}/macro_${this.macroCounter[page.id as number]++}`, () => {
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/${this.pageId}/macro_${this.macroCounter[this.pageId]++}`, () => {
           raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
         });
-        this.setMacroArgs(page, button);
-        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((page.id as number).toString()).path}`);
+        this.setMacroArgs(button);
+        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((this.pageId).toString()).path}`);
       } else {
         raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
       }
+    }
+
+    /**
+     * Sets macro arguments inside storage.
+     */
+    setMacroArgs(button: Button) {
+      if (!button.macroArgs) {
+        throw Error('No macro arguments given')
+      }
+      button.macroArgs.forEach(argument => {
+        this.macroStorage.select((this.pageId).toString())
+          .select(argument.key)
+          .set(argument.value)
+
+      })
     }
 
     /**
@@ -296,47 +327,27 @@ export namespace GUI {
      */
     clicker(page: Page): MCFunctionType {
       return MCFunction(`__gui/${this.name}/pages/click/${page.id}`, () => {
-        page.clickInstruction.forEach(instruction => this.processClickedButton(instruction))
+        // Add clickInstructions
+        page.Buttons?.forEach(e => this.readClickElement(e));
       })
     }
 
-    processClickedButton(clickInstruction: Instruction) {
-      if (Init.isButton(clickInstruction)) {
-        this.detectClick(clickInstruction);
+    readClickElement(e: Instruction | Button) {
+      if (Init.isButton(e)) {
+        this.detectClick(e);
       } else {
-        clickInstruction()
+        e.click()
       }
-
+      this.refresh()
     }
 
-    detectClick(clickInstruction: Button) {
-      if (clickInstruction.onClick) {
-        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${clickInstruction.slot}b}]`))), () => {
-          if (clickInstruction.onClick) { clickInstruction.onClick(); this.refresh() }
-        })
-      } else {
-        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${clickInstruction.slot}b}]`))), () => {
-          this.refresh()
+    detectClick(button: Button) {
+      if (button.onClick) {
+        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
+          if (button.onClick) { button.onClick() }
         })
       }
     }
-
-
-    /**
-     * Sets macro arguments inside storage.
-     */
-    setMacroArgs(page: Page, button: Button) {
-      if (!button.macroArgs) {
-        throw Error('No macro arguments given')
-      }
-      button.macroArgs.forEach(argument => {
-        this.macroStorage.select((page.id as number).toString())
-          .select(argument.key)
-          .set(argument.value)
-
-      })
-    }
-
 
     /* -------------------------------------------------------------------------- */
     /*                               GUI TRIGGER                                  */
@@ -480,6 +491,8 @@ export namespace GUI {
 
       this.filler(pageWithId)
       this.clicker(pageWithId)
+
+      page.pushed = true;
     }
 
     /**
