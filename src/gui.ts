@@ -72,8 +72,8 @@ export namespace GUI {
     triggerCmd: string
 
     Pages: Page[] = []
-    pageId = -1;
-    macroCounter: Record<number, number> = {}
+    pageId = 0;
+    macroCounter: number = 0;
 
     macroStorage: DataPointClass<'storage'>
     pageIdScore: Score;
@@ -252,7 +252,6 @@ export namespace GUI {
      * Initializes all pages.
      */
     initPages(pages: Page[]) {
-
       pages.forEach(page => {
         this.pushPage(page)
       })
@@ -296,17 +295,13 @@ export namespace GUI {
 
       const buttonString = Init.buttonToString(button as any);
 
-
       if (button.macroArgs) {
-        if (!this.macroCounter[this.pageId]) this.macroCounter[this.pageId] = 0;
-        this.macroCounter[this.pageId]++;
-        const macroIndex = this.macroCounter[this.pageId];
-        const fn = MCFunction(`__gui/${this.name}/pages/fill/${this.pageId}/macro_${macroIndex}`, () => {
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.macroCounter++}`, () => {
           raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
         });
 
         this.setMacroArgs(button);
-        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((this.pageId).toString()).path}`);
+        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
 
       } else {
         raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
@@ -321,7 +316,7 @@ export namespace GUI {
         throw Error('No macro arguments given')
       }
       button.macroArgs.forEach(argument => {
-        this.macroStorage.select((this.pageId).toString())
+        this.macroStorage
           .select(argument.key)
           .set(argument.value)
 
@@ -487,9 +482,7 @@ export namespace GUI {
     public pushPage(page: Page) {
       if (this.Pages.includes(page)) throw Error(`The page ${page.name} already exists`);
 
-      this.pageId++;
-      page.id = this.pageId;
-      this.macroCounter[page.id] = -1
+      page.id = this.pageId++;
 
       const pageWithId = page as Page & { id: number }
 
