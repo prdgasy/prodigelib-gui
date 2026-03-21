@@ -52,7 +52,13 @@ export namespace GUI {
   };
 
   type Instruction = {
+    /**
+     * Set custom instructions inside the fill function
+     */
     fill: () => void;
+    /**
+     * Set custom instructions inside the click function
+     */
     click: () => void;
   }
 
@@ -341,6 +347,10 @@ export namespace GUI {
       }
     }
 
+    /**
+     * Detect the click of the player on a slot and run the associated function button.onClick()
+     * @param button Button clicked on
+     */
     detectClick(button: Button) {
       if (button.onClick) {
         _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
