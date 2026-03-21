@@ -72,7 +72,7 @@ export namespace GUI {
     triggerCmd: string
 
     Pages: Page[] = []
-    pageId = 0
+    pageId = -1;
     macroCounter: Record<number, number> = {}
 
     macroStorage: DataPointClass<'storage'>
@@ -207,7 +207,8 @@ export namespace GUI {
       })
 
       _.if(clicked, () => {
-        this.clickFinder()
+        this.clickFinder();
+        this.refresh();
       })
     }
 
@@ -297,11 +298,16 @@ export namespace GUI {
 
 
       if (button.macroArgs) {
-        const fn = MCFunction(`__gui/${this.name}/pages/fill/${this.pageId}/macro_${this.macroCounter[this.pageId]++}`, () => {
+        if (!this.macroCounter[this.pageId]) this.macroCounter[this.pageId] = 0;
+        this.macroCounter[this.pageId]++;
+        const macroIndex = this.macroCounter[this.pageId];
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/${this.pageId}/macro_${macroIndex}`, () => {
           raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
         });
+
         this.setMacroArgs(button);
         raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.select((this.pageId).toString()).path}`);
+
       } else {
         raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
       }
@@ -338,7 +344,6 @@ export namespace GUI {
       } else {
         e.click()
       }
-      this.refresh()
     }
 
     detectClick(button: Button) {
@@ -482,8 +487,9 @@ export namespace GUI {
     public pushPage(page: Page) {
       if (this.Pages.includes(page)) throw Error(`The page ${page.name} already exists`);
 
-      page.id = this.pageId++
-      this.macroCounter[page.id] = 0
+      this.pageId++;
+      page.id = this.pageId;
+      this.macroCounter[page.id] = -1
 
       const pageWithId = page as Page & { id: number }
 
