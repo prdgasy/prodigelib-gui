@@ -38,7 +38,7 @@ export namespace GUI {
   export type Button = {
 
     id: ITEMS;
-    slot: number;
+    slot: number | string;
     count?: number;
 
     name?: Text;
