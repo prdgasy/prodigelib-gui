@@ -17,10 +17,7 @@ type ITEMS = Parameters<typeof give>[1];
  * Handles page management, click detection and entity linking.
  */
 export namespace GUI {
-  export type MacroArgument = {
-    key: string;
-    value: any;
-  };
+  export type MacroArgument = Record<string, any>;
 
   /**
    * Json text type
@@ -318,15 +315,18 @@ export namespace GUI {
      * Sets macro arguments inside storage.
      */
     setMacroArgs(button: Button) {
-      if (!button.macroArgs) {
+      if (button.macroArgs) {
+        button.macroArgs.forEach(argument => {
+          Object.entries(argument).forEach(([key, value]: [string, any]) => {
+            this.macroStorage
+              .select(key)
+              .set(value)
+          })
+        })
+      } else if (!button.macroArgs && typeof button.slot == 'string') {
         throw Error('No macro arguments given')
       }
-      button.macroArgs.forEach(argument => {
-        this.macroStorage
-          .select(argument.key)
-          .set(argument.value)
 
-      })
     }
 
     /**
