@@ -76,7 +76,8 @@ export namespace GUI {
 
     Pages: Page[] = []
     pageId = 0;
-    macroCounter: number = 0;
+    fillMacroCounter: number = 0;
+    clickMacroCounter: number = 0;
 
     macroStorage: DataPointClass<'storage'>
     pageIdScore: Score;
@@ -299,7 +300,7 @@ export namespace GUI {
       const buttonString = Init.buttonToString(button as any);
 
       if (button.macroArgs) {
-        const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.macroCounter}`, () => {
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.fillMacroCounter++}`, () => {
           raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
         });
 
@@ -350,17 +351,17 @@ export namespace GUI {
      * @param button Button clicked on
      */
     detectClick(button: Button) {
-      const onClickMCFunction = MCFunction(`__gui/${this.name}/pages/click/onclickmacro/${this.macroCounter}`, () => {
-        if (button.onClick) button.onClick();
-      });
-
-      const fn = MCFunction(`__gui/${this.name}/pages/click/macros/${this.macroCounter++}`, () => {
-        if (button.onClick) {
-          raw(`$execute unless data entity @s Items[{Slot:$(slot)b}] run function ${onClickMCFunction.toString()}`);
-        }
-      });
-
       if (button.macroArgs) {
+        const macroCounter = this.clickMacroCounter++;
+        const onClickMCFunction = MCFunction(`__gui/${this.name}/pages/click/onclickmacro/${macroCounter}`, () => {
+          if (button.onClick) button.onClick();
+        });
+
+        const fn = MCFunction(`__gui/${this.name}/pages/click/macros/${macroCounter}`, () => {
+          if (button.onClick) {
+            raw(`$execute unless data entity @s Items[{Slot:$(slot)b}] run function ${onClickMCFunction.toString()}`);
+          }
+        });
         this.setMacroArgs(button);
         raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
       } else {
