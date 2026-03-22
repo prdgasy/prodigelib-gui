@@ -299,7 +299,7 @@ export namespace GUI {
       const buttonString = Init.buttonToString(button as any);
 
       if (button.macroArgs) {
-        const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.macroCounter++}`, () => {
+        const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.macroCounter}`, () => {
           raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
         });
 
@@ -323,8 +323,6 @@ export namespace GUI {
               .set(value)
           })
         })
-      } else if (!button.macroArgs && typeof button.slot == 'string') {
-        throw Error('No macro arguments given')
       }
 
     }
@@ -352,9 +350,22 @@ export namespace GUI {
      * @param button Button clicked on
      */
     detectClick(button: Button) {
-      if (button.onClick) {
+      const onClickMCFunction = MCFunction(`__gui/${this.name}/pages/click/onclickmacro/${this.macroCounter}`, () => {
+        if (button.onClick) button.onClick();
+      });
+
+      const fn = MCFunction(`__gui/${this.name}/pages/click/macros/${this.macroCounter++}`, () => {
+        if (button.onClick) {
+          raw(`$execute unless data entity @s Items[{Slot:$(slot)b}] run function ${onClickMCFunction.toString()}`);
+        }
+      });
+
+      if (button.macroArgs) {
+        this.setMacroArgs(button);
+        raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
+      } else {
         _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
-          if (button.onClick) { button.onClick() }
+          if (button.onClick) { button.onClick(); }
         })
       }
     }
