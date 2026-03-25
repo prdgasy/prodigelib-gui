@@ -4,7 +4,10 @@ import {
   forceload, loot, Variable, clear, LootTable, give,
   MCFunctionClass,
   say,
-  sandstonePack
+  sandstonePack,
+  DataIndexMap,
+  NBT
+
 } from 'sandstone'
 
 import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone/variables'
@@ -81,6 +84,7 @@ export namespace GUI {
 
     macroStorage: DataPointClass<'storage'>
     pageIdScore: Score;
+    pageNameIndex = DataIndexMap({});
 
     Ids: ObjectiveClass
     GUILabel: LabelClass
@@ -509,18 +513,22 @@ export namespace GUI {
       const pageWithId = page as Page & { id: number }
 
       this.Pages.push(pageWithId)
+      this.pageNameIndex[page.name] = NBT.long(this.pageId);
 
       this.filler(pageWithId)
       this.clicker(pageWithId)
 
       page.pushed = true;
     }
-
     /**
      * Switches the GUI to another page.
      */
-    public toPage(page: Page) {
-      this.pageIdScore.set(page.id as number)
+    public toPage(page: Page | string) {
+      if (typeof page != 'string') {
+        if (page.id) this.pageIdScore.set(page.id);
+      } else {
+        this.pageIdScore.set(this.pageNameIndex[page] as number);
+      }
     }
   }
 }
