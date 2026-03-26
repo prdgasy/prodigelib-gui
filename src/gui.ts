@@ -11,6 +11,9 @@ import {
 } from 'sandstone'
 
 import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone/variables'
+import { Indexer } from './indexer';
+
+
 
 export type MCFunctionType = ReturnType<typeof MCFunction>;
 type ITEMS = Parameters<typeof give>[1];
@@ -84,7 +87,7 @@ export namespace GUI {
 
     macroStorage: DataPointClass<'storage'>
     pageIdScore: Score;
-    pageNameIndex = DataIndexMap({});
+    pageNameIndex = Indexer();
 
     Ids: ObjectiveClass
     GUILabel: LabelClass
@@ -513,7 +516,7 @@ export namespace GUI {
       const pageWithId = page as Page & { id: number }
 
       this.Pages.push(pageWithId)
-      this.pageNameIndex[page.name] = NBT.long(this.pageId);
+      this.pageNameIndex.set(page.name, this.pageId);
 
       this.filler(pageWithId)
       this.clicker(pageWithId)
@@ -527,7 +530,7 @@ export namespace GUI {
       if (typeof page != 'string') {
         if (page.id) this.pageIdScore.set(page.id);
       } else {
-        this.pageIdScore.set(this.pageNameIndex[page] as number);
+        this.pageIdScore.set(this.pageNameIndex.get(page) as number);
       }
     }
   }
