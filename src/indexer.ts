@@ -1,4 +1,4 @@
-import { Data, DataPointClass, NBT } from "sandstone";
+import { Data, DataPointClass } from "sandstone";
 type pageRec = Record<string, number>;
 
 class IndexerClass {

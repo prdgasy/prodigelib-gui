@@ -5,12 +5,11 @@ import {
   MCFunctionClass,
   say,
   sandstonePack,
-  DataIndexMap,
-  NBT
+  DataIndexMap
 
 } from 'sandstone'
 
-import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone/variables'
+import { DataPointClass, LabelClass, ObjectiveClass } from 'sandstone'
 import { Indexer } from './indexer';
 
 
@@ -530,7 +529,7 @@ export namespace GUI {
       if (typeof page != 'string') {
         if (page.id) this.pageIdScore.set(page.id);
       } else {
-        this.pageIdScore.set(this.pageNameIndex.get(page) as number);
+        this.pageIdScore.set(this.pageNameIndex.get(page) as any);
       }
     }
   }
