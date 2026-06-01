@@ -5,7 +5,8 @@ import {
   MCFunctionClass,
   say,
   sandstonePack,
-  DataIndexMap
+  DataIndexMap,
+  setblock
 
 } from 'sandstone'
 
@@ -92,10 +93,12 @@ export namespace GUI {
     GUILabel: LabelClass
 
     refresh: MCFunctionType
-    clickFinder: MCFunctionType
+    clickFinder: MCFunctionType;
+
+    datapackId: number;
 
 
-    constructor(name: string, triggerCmd: string, pages?: Page[]) {
+    constructor(name: string, triggerCmd: string, datapackId: number, pages?: Page[]) {
 
       this.name = name
       this.triggerCmd = triggerCmd
@@ -117,7 +120,9 @@ export namespace GUI {
       this.refresh = this.defineRefresh()
       this.clickFinder = this.defineClickFinder()
 
-      forceload.add([930005, 930005])
+      this.datapackId = datapackId;
+      forceload.add([this.datapackId, this.datapackId]);
+      setblock(abs(this.datapackId, 0, this.datapackId), 'yellow_shulker_box');
     }
 
     static resolveJSONText(text: Text | Text[]): string {
@@ -228,7 +233,7 @@ export namespace GUI {
      */
     returnItems() {
 
-      const copiedItems = Data('block', abs(930005, 0, 930005), 'Items')
+      const copiedItems = Data('block', abs(this.datapackId, 0, this.datapackId), 'Items')
       const guiItems = Data('entity', '@s', 'Items')
 
       copiedItems.set(guiItems)
@@ -241,7 +246,7 @@ export namespace GUI {
 
       execute.store.result(returnedItem).run(() => {
         loot.give('@p')
-          .mine(abs(930005, 0, 930005), 'stick[custom_data = {drop_contents: 1b}]')
+          .mine(abs(this.datapackId, 0, this.datapackId), 'stick[custom_data = {drop_contents: 1b}]')
       })
 
       _.if(returnedItem, () => {
