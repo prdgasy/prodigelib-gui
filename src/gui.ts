@@ -519,11 +519,11 @@ export namespace GUI {
 
       const pageWithId = page as Page & { id: number }
 
-      this.Pages.push(pageWithId)
-      this.pageNameIndex.set(page.name, this.pageId);
+      this.Pages.push(pageWithId);
+      this.pageNameIndex.set(page.name, page.id);
 
-      this.filler(pageWithId)
-      this.clicker(pageWithId)
+      this.filler(pageWithId);
+      this.clicker(pageWithId);
 
       page.pushed = true;
     }
