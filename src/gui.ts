@@ -335,6 +335,7 @@ export namespace GUI {
               .set(value)
           })
         })
+
       }
 
     }
@@ -370,7 +371,11 @@ export namespace GUI {
 
         const fn = MCFunction(`__gui/${this.name}/pages/click/macros/${macroCounter}`, () => {
           if (button.onClick) {
-            raw(`$execute unless data entity @s Items[{Slot:$(slot)b}] run function ${onClickMCFunction.toString()}`);
+            // Use normal text if no special slot macro args
+            let macroTag = '';
+            if (typeof (button.slot) == 'string') macroTag = '$';
+            raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickMCFunction.toString()}`);
+
           }
         });
         this.setMacroArgs(button);
