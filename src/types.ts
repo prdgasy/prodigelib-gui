@@ -1,8 +1,10 @@
 import { give, MCFunction } from 'sandstone';
-export type MCFunctionType = ReturnType<typeof MCFunction>;
-type Item = Parameters<typeof give>[1];
+import { ButtonClass } from './button';
 
-class MacroArgumentClass {
+export type MCFunctionType = ReturnType<typeof MCFunction>;
+export type Item = Parameters<typeof give>[1];
+
+export class MacroArgumentClass {
   static id = 0;
   key: string;
   value: any;
@@ -32,23 +34,11 @@ export type Text = {
 /**
  * Clickable GUI button
  */
-export type Button = {
 
-  id: Item;
-  slot: number | string;
-  count?: number;
 
-  name?: Text;
-  lore?: Text[];
-  components?: string[];
-  customDataComponentAdded?: boolean;
+export type MenuObject = (FillClick | ButtonClass | (() => void));
 
-  onClick?: MCFunctionType | (() => void);
-
-  macroArgs?: MacroArgumentClass[];
-};
-
-export type Instruction = {
+export type FillClick = {
   /**
    * Set custom instructions inside the fill function
    */
@@ -59,12 +49,3 @@ export type Instruction = {
   click: () => void;
 }
 
-/**
- * Represents a GUI page.
- */
-export type Page = {
-  name: string;
-  Buttons?: (Button | Instruction | (()=>void))[];
-  id?: number;
-  pushed?: boolean;
-};

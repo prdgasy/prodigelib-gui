@@ -10,17 +10,16 @@ import {
 import { Indexer } from './indexer';
 
 
-import { Text, Button, MCFunctionType, Page, Instruction } from './types';
+import { Text, MCFunctionType, MenuObject } from './types';
+import { PageClass } from './page';
+import { ButtonClass } from './button';
 
 export class GUI {
 
   name: string
   triggerCmd: string
 
-  Pages: Page[] = []
-  pageId = 0;
-  fillMacroCounter: number = 0;
-  clickMacroCounter: number = 0;
+  Pages: PageClass[] = []
 
   macroStorage: DataPointClass<'storage'>
   pageIdScore: Score;
@@ -35,7 +34,7 @@ export class GUI {
   datapackId: number;
 
 
-  constructor(name: string, triggerCmd: string, datapackId: number, pages?: Page[]) {
+  constructor(name: string, triggerCmd: string, datapackId: number) {
 
     this.name = name
     this.triggerCmd = triggerCmd
@@ -47,9 +46,7 @@ export class GUI {
     this.Ids = Objective.create(`${name}.gui.id`)
     this.GUILabel = Label(`${name}.gui`)
 
-    if (pages) {
-      this.initPages(pages)
-    }
+
 
     this.defineTrigger()
     this.findObjs()
@@ -62,33 +59,7 @@ export class GUI {
     setblock(abs(this.datapackId, 0, this.datapackId), 'yellow_shulker_box');
   }
 
-  static resolveJSONText(text: Text | Text[]): string {
-    if (Array.isArray(text)) {
-      return text.map(l => GUI.resolveJSONText(l)).join(',')
-    } else {
-      const t = {
-        ...text,
-        color: text.color ?? 'white',
-        italic: text.italic ?? false,
-        bold: text.bold ?? false
-      }
 
-      return '{text: "' + t.text + '", color: "' + t.color + '", italic: ' + t.italic + ', bold: ' + t.bold + '}'
-    }
-  }
-
-  /**
-   * Converts the button into a valid Minecraft item string.
-   */
-  static buttonToString(button: Button & Required<Pick<Button, 'components'>>): string {
-    let lorePart = '';
-    let namePart = '';
-    if (button.name) lorePart = ', custom_name=' + GUI.resolveJSONText(button.name);
-    if (button.lore) namePart = ', lore=[' + GUI.resolveJSONText(button.lore) + ']';
-    return button.id + '['
-      + button.components.toString() + namePart + lorePart
-      + ']'
-  }
   /* -------------------------------------------------------------------------- */
   /*                             ENTITY MANAGEMENT                              */
   /* -------------------------------------------------------------------------- */
@@ -98,7 +69,7 @@ export class GUI {
    */
   findObjs(): MCFunctionType {
 
-    return MCFunction(`__gui/${this.name}/findobjs`, () => {
+    return MCFunction(`__gui/${this.name.toLowerCase()}/findobjs`, () => {
 
       execute
         .as('@a')
@@ -196,146 +167,11 @@ export class GUI {
   /*                              PAGE MANAGEMENT                               */
   /* -------------------------------------------------------------------------- */
   // TYPE GUARD
-  static isButton(e: Instruction | Button | (() => void)): e is Button {
+  static isButton(e: MenuObject): e is ButtonClass {
     return 'slot' in e;
   }
 
-  /**
-   * Initializes all pages.
-   */
-  initPages(pages: Page[]) {
-    pages.forEach(page => {
-      this.pushPage(page)
-    })
-  }
 
-  pushInstruction(page: Page, instruction: Instruction | (() => void)) {
-    if (page.pushed) throw Error(
-      `PRODIGELIB/GUI • Error: Page already pushed. \nTry using pushInstruction() before adding the page (${page.name}) to the menu (${this.name})`)
-    if (!page.Buttons) page.Buttons = [];
-    page.Buttons.push(instruction);
-  }
-
-  /**
-   * Generates the function that fills the inventory for a page.
-   */
-  filler(page: Page & Required<Pick<Page, 'id'>>): MCFunctionType {
-    return MCFunction(`__gui/${this.name}/pages/fill/${page.id}`, () => {
-      page.Buttons?.forEach(e => this.readFillElement(e));
-    })
-  }
-
-  readFillElement(e: Instruction | Button | (() => void)) {
-    if (GUI.isButton(e)) {
-      this.fillItem(e);
-    } else if (typeof e === 'function') {
-      e();
-    } else {
-      e.fill();
-    }
-  }
-
-  /**
-   * Combination of placeItem and detectClick when different action is not needed
-   */
-  emitButton(button: Button) {
-    this.fillItem(button);
-    this.detectClick(button);
-  }
-  /**
-   * Emit the button to a function
-   * @param button Button emited
-   */
-  fillItem(button: Button) {
-    // add custom_data if not already
-    if (!button.customDataComponentAdded) {
-      button.components = button.components ?? [];
-      if (button.components) button.components.push(`custom_data={${this.name}: 1b}`);
-      button.customDataComponentAdded = true;
-    }
-
-    const buttonString = GUI.buttonToString(button as any);
-
-    if (button.macroArgs) {
-      const fn = MCFunction(`__gui/${this.name}/pages/fill/macros/${this.fillMacroCounter++}`, () => {
-        raw(`$item replace entity @s container.${button.slot} with ${buttonString}`);
-      });
-
-      this.setMacroArgs(button);
-      raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
-
-    } else {
-      raw(`item replace entity @s container.${button.slot} with ${buttonString}`);
-    }
-  }
-
-  /**
-   * Sets macro arguments inside storage.
-   */
-  setMacroArgs(button: Button) {
-    if (button.macroArgs) {
-      button.macroArgs.forEach(argument => {
-        this.macroStorage
-          .select(argument.key)
-          .set(argument.value)
-
-      })
-
-    }
-
-  }
-
-  /**
-   * Generates the click detection function for a page.
-   */
-  clicker(page: Page): MCFunctionType {
-    return MCFunction(`__gui/${this.name}/pages/click/${page.id}`, () => {
-      // Add clickInstructions
-      page.Buttons?.forEach(e => this.readClickElement(e));
-    })
-  }
-
-  readClickElement(e: Instruction | Button | (() => void)) {
-    if (GUI.isButton(e)) {
-      this.detectClick(e);
-    } else if (typeof e === 'function') {
-      e();
-    } else {
-      e.click()
-    }
-  }
-
-  /**
-   * Detect the click of the player on a slot and run the associated function button.onClick()
-   * @param button Button clicked on
-   */
-  detectClick(button: Button) {
-    if (button.macroArgs) {
-      const macroCounter = this.clickMacroCounter++;
-      const onClickMCFunction = MCFunction(`__gui/${this.name}/pages/click/onclickmacro/${macroCounter}`, () => {
-        if (button.onClick) button.onClick();
-      });
-
-      const fn = MCFunction(`__gui/${this.name}/pages/click/macros/${macroCounter}`, () => {
-        if (button.onClick) {
-          // Use normal text if no special slot macro args
-          let macroTag = '';
-          if (typeof (button.slot) == 'string') macroTag = '$';
-          raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickMCFunction.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
-
-        }
-      });
-
-      this.setMacroArgs(button);
-      raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
-
-    } else {
-      // No macro
-      _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
-        if (button.onClick) { button.onClick(); }
-      })
-    }
-  }
 
   /* -------------------------------------------------------------------------- */
   /*                               GUI TRIGGER                                  */
@@ -345,7 +181,7 @@ export class GUI {
    * Creates the trigger command handler.
    */
   defineTrigger(): MCFunctionType {
-    return MCFunction(`__gui/${this.name}/trigger`, () => {
+    return MCFunction(`__gui/${this.name.toLowerCase()}/trigger`, () => {
       execute.as('@a').at('@s').run(() => {
         const triggerScore = Objective.create(this.triggerCmd, 'trigger')
         _.if(triggerScore('@s'), () => {
@@ -415,7 +251,7 @@ export class GUI {
    */
   defineRefresh(): MCFunctionType {
 
-    return MCFunction(`__gui/${this.name}/refresh`, () => {
+    return MCFunction(`__gui/${this.name.toLowerCase()}/refresh`, () => {
 
       Data('entity', '@s').select('Items').remove()
 
@@ -423,8 +259,8 @@ export class GUI {
         .set(this.pageIdScore)
 
       functionCmd(
-        MCFunction(`__gui/${this.name}/pages/fillfindpage`, () => {
-          raw(`$function prodige_skills:__gui/${this.name}/pages/fill/$(pageId)`)
+        MCFunction(`__gui/${this.name.toLowerCase()}/pages/fillfindpage`, () => {
+          raw(`$function prodige_skills:__gui/${this.name.toLowerCase()}/pages/fill/$(pageId)`)
         }),
         'with',
         'storage',
@@ -441,14 +277,14 @@ export class GUI {
    */
   defineClickFinder(): MCFunctionType {
 
-    return MCFunction(`__gui/${this.name}/clickfinder`, () => {
+    return MCFunction(`__gui/${this.name.toLowerCase()}/clickfinder`, () => {
 
       Data('storage', 'prodiges_skills:gui', 'clickFinder').select('pageId')
         .set(this.pageIdScore)
 
       functionCmd(
-        MCFunction(`__gui/${this.name}/pages/clickfindpage`, () => {
-          raw(`$function prodige_skills:__gui/${this.name}/pages/click/$(pageId)`)
+        MCFunction(`__gui/${this.name.toLowerCase()}/pages/clickfindpage`, () => {
+          raw(`$function prodige_skills:__gui/${this.name.toLowerCase()}/pages/click/$(pageId)`)
         }),
         'with',
         'storage',
@@ -464,32 +300,15 @@ export class GUI {
   /*                                PUBLIC API                                  */
   /* -------------------------------------------------------------------------- */
 
-  /**
-   * Adds a page to the GUI.
-   */
-  public pushPage(page: Page) {
-    if (this.Pages.includes(page)) throw Error(`The page ${page.name} already exists`);
 
-    page.id = this.pageId++;
-
-    const pageWithId = page as Page & { id: number }
-
-    this.Pages.push(pageWithId);
-    this.pageNameIndex.set(page.name, page.id);
-
-    this.filler(pageWithId);
-    this.clicker(pageWithId);
-
-    page.pushed = true;
-  }
   /**
    * Switches the GUI to another page.
    */
-  public toPage(page: Page | string) {
+  public toPage(page: PageClass | string) {
     if (typeof page != 'string') {
       if (page.id) this.pageIdScore.set(page.id);
     } else {
-      this.pageIdScore.set(this.pageNameIndex.get(page) as any);
+      this.pageIdScore.set(this.pageNameIndex.get(page));
     }
   }
 }
