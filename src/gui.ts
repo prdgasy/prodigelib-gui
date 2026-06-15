@@ -374,13 +374,16 @@ export namespace GUI {
             // Use normal text if no special slot macro args
             let macroTag = '';
             if (typeof (button.slot) == 'string') macroTag = '$';
-            raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickMCFunction.toString()}`);
+            raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickMCFunction.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
 
           }
         });
+
         this.setMacroArgs(button);
         raw(`function ${fn.toString()} with storage ${this.macroStorage.currentTarget} ${this.macroStorage.path}`);
+
       } else {
+        // No macro
         _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
           if (button.onClick) { button.onClick(); }
         })
