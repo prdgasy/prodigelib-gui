@@ -14,8 +14,8 @@ export class PageClass {
 
 
   static globalId = 0;
-  fillMacroCount: number;
-  clickMacroCount: number;
+  static fillMacroCount = 0;
+  static clickMacroCount = 0;
 
   constructor(parent: GUI, name?: string, Objects?: MenuObject[]) {
     this.parent = parent;
@@ -23,9 +23,6 @@ export class PageClass {
     this.id = PageClass.globalId++;
     this.name = name ?? `Page_${this.id}`;
     this.nameToLower = this.name.toLowerCase();
-
-    this.fillMacroCount = 0;
-    this.clickMacroCount = 0;
   }
 
   pushObject(...objects: MenuObject[]) {
@@ -70,8 +67,8 @@ export class PageClass {
   placeItem(button: ButtonClass) {
     // add custom_data if not already
 
-    if (button.macroArgs.length !== 0) {
-      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/macros/macro_${this.fillMacroCount++}`, () => {
+    if (button.macroArgs && button.macroArgs.length !== 0) {
+      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/macros/macro_${PageClass.fillMacroCount++}`, () => {
         raw(`$item replace entity @s container.${button.slot} with ${button.toString()}`);
       });
 
@@ -123,13 +120,13 @@ export class PageClass {
    * @param button Button clicked on
    */
   detectClick(button: ButtonClass) {
-    if (button.macroArgs.length !== 0) {
-      const macroCounter = this.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macro_onclick/${this.clickMacroCount}`, () => {
+    if (button.macroArgs && button.macroArgs.length !== 0) {
+      const macroCounter = PageClass.clickMacroCount++;
+      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macro_onclick/${macroCounter}`, () => {
         if (button.onClick) button.onClick();
       });
 
-      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macros/${this.clickMacroCount}`, () => {
+      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macros/${macroCounter}`, () => {
         if (button.onClick) {
           // Use normal text if no special slot macro args
           let macroTag = '';
