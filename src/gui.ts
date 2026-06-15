@@ -196,7 +196,7 @@ export class GUI {
   /*                              PAGE MANAGEMENT                               */
   /* -------------------------------------------------------------------------- */
   // TYPE GUARD
-  static isButton(e: Instruction | Button): e is Button {
+  static isButton(e: Instruction | Button | (() => void)): e is Button {
     return 'slot' in e;
   }
 
@@ -209,7 +209,7 @@ export class GUI {
     })
   }
 
-  pushInstruction(page: Page, instruction: Instruction) {
+  pushInstruction(page: Page, instruction: Instruction | (() => void)) {
     if (page.pushed) throw Error(
       `PRODIGELIB/GUI • Error: Page already pushed. \nTry using pushInstruction() before adding the page (${page.name}) to the menu (${this.name})`)
     if (!page.Buttons) page.Buttons = [];
@@ -225,19 +225,28 @@ export class GUI {
     })
   }
 
-  readFillElement(e: Instruction | Button) {
+  readFillElement(e: Instruction | Button | (() => void)) {
     if (GUI.isButton(e)) {
-      this.placeItem(e);
+      this.fillItem(e);
+    } else if (typeof e === 'function') {
+      e();
     } else {
       e.fill();
     }
   }
 
   /**
+   * Combination of placeItem and detectClick when different action is not needed
+   */
+  emitButton(button: Button) {
+    this.fillItem(button);
+    this.detectClick(button);
+  }
+  /**
    * Emit the button to a function
    * @param button Button emited
    */
-  placeItem(button: Button) {
+  fillItem(button: Button) {
     // add custom_data if not already
     if (!button.customDataComponentAdded) {
       button.components = button.components ?? [];
@@ -286,9 +295,11 @@ export class GUI {
     })
   }
 
-  readClickElement(e: Instruction | Button) {
+  readClickElement(e: Instruction | Button | (() => void)) {
     if (GUI.isButton(e)) {
       this.detectClick(e);
+    } else if (typeof e === 'function') {
+      e();
     } else {
       e.click()
     }

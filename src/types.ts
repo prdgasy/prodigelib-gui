@@ -64,7 +64,7 @@ export type Instruction = {
  */
 export type Page = {
   name: string;
-  Buttons?: (Button | Instruction)[];
+  Buttons?: (Button | Instruction | (()=>void))[];
   id?: number;
   pushed?: boolean;
 };
