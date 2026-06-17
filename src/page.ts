@@ -182,6 +182,7 @@ export class PageClass {
     this.parent.Pages.push(this);
     this.parent.pageNameIndex.set(this.name, this.id);
 
+
     this.fill();
     this.click();
 
