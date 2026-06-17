@@ -12,6 +12,7 @@ export class PageClass {
   name: string;
   nameToLower: string;
 
+  currentContext: 'fill' | 'click' | null = null;
 
   static globalId = 0;
   static fillMacroCount = 0;
@@ -25,26 +26,47 @@ export class PageClass {
     this.nameToLower = this.name.toLowerCase();
   }
 
+  linkParent(button: ButtonClass) {
+    if (!button.parent) {
+      button.parent = this.parent;
+      button.components.push(`custom_data={${this.parent.name}: 1b}`);
+    }
+  }
+
   pushObject(...objects: MenuObject[]) {
     if (this.isPushed) throw Error(
       `PRODIGELIB/GUI • Error: Page already pushed. \nTry using pushInstruction() before adding the page (${this.name}) to the menu (${this.parent.name})`);
+
     this.Objects.push(...objects);
   }
 
   /**
-   * Combination of placeItem and detectClick when different action is not needed
+   * Combination of placeItem and detectClick when different action is not needed.
+   * Auto-detects the compilation context to avoid mixing files.
    */
   emitButton(button: ButtonClass) {
-    this.placeItem(button);
-    this.detectClick(button);
+    // 🟢 Si on est en train d'exécuter la boucle de "fill", on ne pose QUE l'item
+    if (this.currentContext === 'fill') {
+      this.placeItem(button);
+    }
+    // 🟢 Si on est en train d'exécuter la boucle de "click", on ne met QUE la détection
+    else if (this.currentContext === 'click') {
+      this.detectClick(button);
+    }
+    // 🟢 Sécurité si appelé en dehors des boucles principales de Sandstone
+    else {
+      console.error("No context");
+    }
   }
 
   /**
    * Generates the function that fills the inventory for a page.
    */
   fill(): MCFunctionType {
-    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/fill_${this.id}`, () => {
+    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/${this.id}`, () => {
+      this.currentContext = 'fill';
       this.Objects.forEach(e => this.readFillElement(e));
+      this.currentContext = null;
     })
   }
 
@@ -66,9 +88,9 @@ export class PageClass {
    */
   placeItem(button: ButtonClass) {
     // add custom_data if not already
-
+    this.linkParent(button);
     if (button.macroArgs && button.macroArgs.length !== 0) {
-      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/macros/macro_${PageClass.fillMacroCount++}`, () => {
+      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/macros/${PageClass.fillMacroCount++}`, () => {
         raw(`$item replace entity @s container.${button.slot} with ${button.toString()}`);
       });
 
@@ -100,8 +122,10 @@ export class PageClass {
    * Generates the click detection function for a page.
    */
   click(): MCFunctionType {
-    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/click_${this.id}`, () => {
+    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/${this.id}`, () => {
+      this.currentContext = 'click';
       this.Objects.forEach(e => this.readClickElement(e));
+      this.currentContext = null;
     })
   }
 
@@ -120,6 +144,7 @@ export class PageClass {
    * @param button Button clicked on
    */
   detectClick(button: ButtonClass) {
+    this.linkParent(button);
     if (button.macroArgs && button.macroArgs.length !== 0) {
       const macroCounter = PageClass.clickMacroCount++;
       const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macro_onclick/${macroCounter}`, () => {

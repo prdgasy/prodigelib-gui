@@ -11,7 +11,7 @@ export class MacroArgumentClass {
   call: () => string;
 
   constructor(value: any) {
-    this.key = `MacroArguement_${(MacroArgumentClass.id++).toString()}`;
+    this.key = `MacroArgument_${(MacroArgumentClass.id++).toString()}`;
     this.value = value;
     this.call = (): string => { return `$(${this.key})`; };
   }

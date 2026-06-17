@@ -1,5 +1,6 @@
 import { MacroArgument } from "sandstone/core";
 import { Item, MacroArgumentClass, MCFunctionType, Text } from "./types";
+import { GUI, PageClass } from "@prodigelib/gui";
 
 export class ButtonClass {
 
@@ -15,6 +16,10 @@ export class ButtonClass {
 
   macroArgs: MacroArgumentClass[];
 
+  parentTagged = false;
+
+  parent?: GUI;
+
   constructor(id: Item, slot: number | string, count?: number, name?: Text, lore?: Text[], components?: string[], onClick?: MCFunctionType | (() => void), macroArgs?: MacroArgumentClass[]) {
     this.id = id;
     this.slot = slot;
@@ -24,11 +29,9 @@ export class ButtonClass {
     this.components = components ?? [];
     this.onClick = onClick;
     this.macroArgs = macroArgs ?? [];
-
-    this.components.push(`custom_data={${this.name}: 1b}`);
-
-
   }
+
+
 
   addMacroArg(...arg: MacroArgumentClass[]) {
     this.macroArgs.push(...arg);
