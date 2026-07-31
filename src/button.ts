@@ -6,7 +6,8 @@ import { MCFunction } from "sandstone";
 
 
 export class ButtonClass {
-  static currentButton: ButtonClass;
+  static currentButton: ButtonClass | null;
+  static pendingArgs: MacroArgClass[] = [];
   id: Macroable<Item>;
   slot: Macroable<number>;
   count: Macroable<number>;
@@ -33,32 +34,36 @@ export class ButtonClass {
     this.onClick = onClick;
     this.macroArgs = macroArgs ?? [];
 
+    // pending args injections
+    for (const arg of ButtonClass.pendingArgs) {
+      this.inject(arg);
+    }
+
+    ButtonClass.pendingArgs = [];
     ButtonClass.currentButton = this;
     this.catchArgs();
 
+    ButtonClass.currentButton = null;
   }
 
   private catchArgs(currentObject: any = this) {
-    // 1. Sécurité : si ce n'est pas un objet ou un tableau, ou si c'est nul, on s'arrête
     if (!currentObject || typeof currentObject !== 'object') return;
 
-    // 2. On récupère toutes les valeurs de l'objet ou du sous-objet actuel
-    for (const value of Object.values(currentObject)) {
+    // 1. Si onClick est une fonction, on l'exécute pour intercepter ses appels à toString() / inject()
+    if (currentObject === this && typeof this.onClick === 'function') {
+      MCFunction(`_`, () => {
+        (this.onClick as () => void)();
+      }, { addToSandstoneCore: false });
+    }
 
-      // Si on tombe sur une instance de Macro, bingo !
+    // 2. Inspection récursive des propriétés
+    for (const value of Object.values(currentObject)) {
       if (value instanceof MacroArgClass) {
         if (!this.macroArgs.includes(value)) {
           this.macroArgs.push(value);
         }
-      }
-      // 🟢 Si c'est un sous-objet ou un tableau (comme "name" ou "lore"), on fouille dedans !
-      else if (typeof value === 'object') {
-        this.catchArgs(value); // Appel récursif pour inspecter l'intérieur
-      }
-      else if (typeof currentObject.onClick === 'function') {
-        MCFunction(`gui_${currentObject.slot}_click`, () => {
-          currentObject.onClick();
-        }, { lazy: true });
+      } else if (typeof value === 'object') {
+        this.catchArgs(value);
       }
     }
   }
@@ -81,8 +86,8 @@ export class ButtonClass {
    * Converts the button into a valid Minecraft item string.
    */
   toString(): string {
-    console.log(`${this.macroArgs.length} macroArg(s) catched:`);
-    console.log(this.macroArgs);
+    // console.log(`${this.macroArgs.length} macroArg(s) catched:`);
+    // console.log(this.macroArgs);
     let lorePart = '';
     let namePart = '';
     if (this.name) lorePart = ', custom_name=' + this.resolveJSONText(this.name);

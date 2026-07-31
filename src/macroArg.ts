@@ -12,8 +12,16 @@ export class MacroArgClass {
     this.value = value;
   }
 
-  toString() {
-    ButtonClass.currentButton.inject(this);
+  toString(): string {
+    if (ButtonClass.currentButton) {
+      // Cas A : On est DANS l'évaluation du bouton (ex: exécution du onClick)
+      ButtonClass.currentButton.inject(this);
+    } else {
+      // Cas B : On est AVANT le constructeur (ex: concaténation string dans "name" ou "lore")
+      // On le met en attente, le bouton va l'aspirer dans 1 milliseconde
+      ButtonClass.pendingArgs.push(this);
+    }
+
     return `$(${this.key})`;
   }
 }
