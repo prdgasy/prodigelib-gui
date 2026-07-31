@@ -8,21 +8,9 @@ export class MacroArgClass {
   value: any;
 
   constructor(value: any) {
-    this.key = `macroArg_${(MacroArgClass.id++).toString()}`;
+    this.key = `macroArg_${String((MacroArgClass.id++))}`;
     this.value = value;
   }
-
-  // private resolveValue<T>(field: Macroable<T>): string {
-  //   if (field instanceof MacroArg) {
-  //     // 🟢 L'enregistrement automatique se fait ICI !
-  //     // Si ce bouton est en cours de traitement, la macro s'ajoute à ses dépendances.
-  //     if (!this.macroArgs.includes(field)) {
-  //       this.macroArgs.push(field);
-  //     }
-  //     return field.get(); // Renvoie "$(...)"
-  //   }
-  //   return String(field); // Renvoie l'item ou le slot brut
-  // }
 
   toString() {
     ButtonClass.currentButton.inject(this);
@@ -30,6 +18,6 @@ export class MacroArgClass {
   }
 }
 
-export function macroArg(value: any): MacroArgClass {
+export function Macro(value: any): MacroArgClass {
   return new MacroArgClass(value);
 }

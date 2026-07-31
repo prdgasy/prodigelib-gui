@@ -1,4 +1,4 @@
-import { Data, DataPointClass } from "sandstone";
+import { Data, DataPointClass, Objective, Score, scoreboard } from "sandstone";
 type pageRec = Record<string, number>;
 
 class IndexerClass {
@@ -12,17 +12,15 @@ class IndexerClass {
     for (const [key, value] of Object.entries(values)) {
       this.dataPointer.select(key).set(value);
     }
-
   }
 
   set(key: string, index: number) {
     this.dataPointer.select(key).set(index);
   }
 
-  get(key: string) {
+  get(key: string | Score) {
     return this.dataPointer.select(key);
   };
-
 }
 
 export function Indexer(values?: pageRec): IndexerClass {

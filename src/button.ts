@@ -35,6 +35,7 @@ export class ButtonClass {
 
     ButtonClass.currentButton = this;
     this.catchArgs();
+
   }
 
   private catchArgs(currentObject: any = this) {
@@ -53,6 +54,11 @@ export class ButtonClass {
       // 🟢 Si c'est un sous-objet ou un tableau (comme "name" ou "lore"), on fouille dedans !
       else if (typeof value === 'object') {
         this.catchArgs(value); // Appel récursif pour inspecter l'intérieur
+      }
+      else if (typeof currentObject.onClick === 'function') {
+        MCFunction(`gui_${currentObject.slot}_click`, () => {
+          currentObject.onClick();
+        }, { lazy: true });
       }
     }
   }
@@ -75,6 +81,8 @@ export class ButtonClass {
    * Converts the button into a valid Minecraft item string.
    */
   toString(): string {
+    console.log(`${this.macroArgs.length} macroArg(s) catched:`);
+    console.log(this.macroArgs);
     let lorePart = '';
     let namePart = '';
     if (this.name) lorePart = ', custom_name=' + this.resolveJSONText(this.name);
