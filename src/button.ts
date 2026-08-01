@@ -2,7 +2,7 @@ import { Item, MCFunctionType, Text } from "./types";
 import { GUI } from './gui';
 import { PageClass } from "./page";
 import { MacroArgClass, Macroable } from "./macroArg";
-import { MCFunction } from "sandstone";
+import { MCFunction, say } from "sandstone";
 
 
 export class ButtonClass {
@@ -49,6 +49,8 @@ export class ButtonClass {
   private catchArgs(currentObject: any = this) {
     if (!currentObject || typeof currentObject !== 'object') return;
 
+
+
     // 1. Si onClick est une fonction, on l'exécute pour intercepter ses appels à toString() / inject()
     if (currentObject === this && typeof this.onClick === 'function') {
       MCFunction(`_`, () => {
@@ -86,8 +88,8 @@ export class ButtonClass {
    * Converts the button into a valid Minecraft item string.
    */
   toString(): string {
-    // console.log(`${this.macroArgs.length} macroArg(s) catched:`);
-    // console.log(this.macroArgs);
+    console.log(`${this.macroArgs.length} macroArg(s) catched:`);
+    console.log(this.macroArgs);
     let lorePart = '';
     let namePart = '';
     if (this.name) lorePart = ', custom_name=' + this.resolveJSONText(this.name);

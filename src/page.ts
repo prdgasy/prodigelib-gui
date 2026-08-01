@@ -110,7 +110,7 @@ export class PageClass {
       button.macroArgs.forEach(argument => {
         this.parent.macroStorage
           .select(argument.key)
-          .set(argument.value)
+          .set(argument.rawValue())
 
       })
 

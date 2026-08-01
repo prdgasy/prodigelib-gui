@@ -5,27 +5,38 @@ export type Macroable<T> = T | MacroArgClass;
 export class MacroArgClass {
   static id = 0;
   key: string;
-  value: any;
-
+  rawValue: () => any;
   constructor(value: any) {
     this.key = `macroArg_${String((MacroArgClass.id++))}`;
-    this.value = value;
+    this.rawValue = value;
+  }
+
+
+  get value(): any {
+    return this.rawValue();
   }
 
   toString(): string {
     if (ButtonClass.currentButton) {
-      // Cas A : On est DANS l'évaluation du bouton (ex: exécution du onClick)
       ButtonClass.currentButton.inject(this);
     } else {
-      // Cas B : On est AVANT le constructeur (ex: concaténation string dans "name" ou "lore")
-      // On le met en attente, le bouton va l'aspirer dans 1 milliseconde
       ButtonClass.pendingArgs.push(this);
     }
-
     return `$(${this.key})`;
   }
 }
 
-export function Macro(value: any): MacroArgClass {
-  return new MacroArgClass(value);
+export function Macro<T>(value: () => T extends (void) ? never : T): MacroArgClass {
+  if (value instanceof MacroArgClass) throw Error(`${value} is already a Macro.`);
+
+  if (typeof value === 'function') return new MacroArgClass(value);
+
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') throw new Error(`[Prodigelib GUI] Macro is not necessary here.`);
+
+  throw new Error(
+    `[Prodigelib GUI] Sandstone objects must be wrapped in a function inside $().\n` +
+    `  - Correct:   $(() => playerKills) or $(() => playerKills["++"])\n` +
+    `  - Incorrect: $(playerKills) or $(playerKills["++"])`
+  );
 }
