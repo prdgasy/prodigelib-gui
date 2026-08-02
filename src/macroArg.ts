@@ -26,17 +26,34 @@ export class MacroArgClass {
   }
 }
 
-export function Macro<T>(value: () => T extends (void) ? never : T): MacroArgClass {
-  if (value instanceof MacroArgClass) throw Error(`${value} is already a Macro.`);
 
-  if (typeof value === 'function') return new MacroArgClass(value);
+// 1. Type utilitaire magique :
+// Si V est une fonction qui renvoie R :
+//    - Si R est void ou undefined -> 'never' (DECLENCHE L'ERREUR EN ROUGE)
+//    - Si R est une vraie valeur  -> V (Valide la fonction)
+// Si V n'est pas une fonction     -> 'never' (REJETTE "a", 123, playerKills, etc.)
+type MacroErrorMustReturn = "[Prodigelib GUI] Your $() callback MUST be inside a function AND return a value.";
+export type ValidMacroCallback<V> = V extends (arg: any) => infer R
+  ? ([R] extends [void] ? MacroErrorMustReturn
+    : ([R] extends [undefined] ? MacroErrorMustReturn : V))
+  : MacroErrorMustReturn;
+
+export function Macro<V>(
+  value: ValidMacroCallback<V>
+): MacroArgClass {
+  if (value instanceof MacroArgClass) {
+    throw Error(`${value} is already a Macro.`);
+  }
+
+  if (typeof value === 'function') {
+    return new MacroArgClass(value);
+  }
 
 
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') throw new Error(`[Prodigelib GUI] Macro is not necessary here.`);
 
   throw new Error(
-    `[Prodigelib GUI] Sandstone objects must be wrapped in a function inside $().\n` +
-    `  - Correct:   $(() => playerKills) or $(() => playerKills["++"])\n` +
-    `  - Incorrect: $(playerKills) or $(playerKills["++"])`
+    `[Prodigelib GUI] Sandstone objects and raw values must be wrapped in a function inside $().\n` +
+    `  - Correct:   $(() => playerKills) or $(() => "a")\n` +
+    `  - Incorrect: $(playerKills) or $("a")`
   );
 }
