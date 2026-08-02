@@ -3,6 +3,7 @@ import { GUI } from './gui';
 import { PageClass } from "./page";
 import { MacroArgClass, Macroable } from "./macroArg";
 import { MCFunction, say } from "sandstone";
+import { debugLog } from "./debug";
 
 
 export class ButtonClass {
@@ -87,9 +88,10 @@ export class ButtonClass {
   /**
    * Converts the button into a valid Minecraft item string.
    */
+
   toString(): string {
-    console.log(`${this.macroArgs.length} macroArg(s) catched:`);
-    console.log(this.macroArgs);
+    debugLog(`${this.macroArgs.length} macroArg(s) catched:`);
+    debugLog(this.macroArgs)
     let lorePart = '';
     let namePart = '';
     if (this.name) lorePart = ', custom_name=' + this.resolveJSONText(this.name);
