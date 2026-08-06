@@ -1,7 +1,7 @@
-import { _, Data, DataPointClass, MCFunction, raw, sandstonePack } from "sandstone";
-import { MCFunctionType, MenuObject } from "./types";
-import { GUI } from "./gui";
+import { _, Data, MCFunction, raw } from "sandstone";
 import { ButtonClass } from "./button";
+import { GUI } from "./gui";
+import { MCFunctionType, MenuObject } from "./types";
 
 export class PageClass {
   parent: GUI;
@@ -141,7 +141,7 @@ export class PageClass {
 
   /**
    * Detect the click of the player on a slot and run the associated function button.onClick()
-   * @param button Button clicked on
+   * @param button Button clicked on f
    */
   detectClick(button: ButtonClass) {
     this.linkParent(button);
