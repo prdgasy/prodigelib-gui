@@ -38,7 +38,7 @@ export type ValidMacroCallback<V> = V extends (arg: any) => infer R
     : ([R] extends [undefined] ? MacroErrorMustReturn : V))
   : MacroErrorMustReturn;
 
-export function Macro<V>(
+export function MacroArg<V>(
   value: ValidMacroCallback<V>
 ): MacroArgClass {
   if (value instanceof MacroArgClass) {
