@@ -1,13 +1,12 @@
-import { Item, MCFunctionType, Text } from "./types";
-import { GUI } from './gui';
-import { PageClass } from "./page";
-import { MacroArgClass, Macroable } from "./macroArg";
-import { MCFunction, say } from "sandstone";
+import { MCFunction } from "sandstone";
 import { debugLog } from "./debug";
+import { GUI } from './gui';
+import { MacroArgClass, Macroable } from "./macroArg";
+import { Item, MCFunctionType, Text } from "./types";
 
 
 export class ButtonClass {
-  static currentButton: ButtonClass | null;
+  static currentButton: ButtonClass;
   static pendingArgs: MacroArgClass[] = [];
   id: Macroable<Item>;
   slot: Macroable<number>;
@@ -16,6 +15,7 @@ export class ButtonClass {
   name: Macroable<Text>;
   lore: Macroable<Text[]>;
   components: string[];
+
 
   onClick?: MCFunctionType | (() => void);
 
@@ -26,6 +26,11 @@ export class ButtonClass {
   parent?: GUI;
 
   constructor(id: Macroable<Item>, slot: Macroable<number>, count?: Macroable<number>, name?: Macroable<Text>, lore?: Macroable<Text[]>, components?: string[], onClick?: MCFunctionType | (() => void), macroArgs?: MacroArgClass[]) {
+
+
+    // Set current button before evaluating properties that might contain macros
+    ButtonClass.currentButton = this;
+
     this.id = id;
     this.slot = slot;
     this.count = count ?? 1;
@@ -39,12 +44,10 @@ export class ButtonClass {
     for (const arg of ButtonClass.pendingArgs) {
       this.inject(arg);
     }
-
     ButtonClass.pendingArgs = [];
-    ButtonClass.currentButton = this;
+
     this.catchArgs();
 
-    ButtonClass.currentButton = null;
   }
 
   private catchArgs(currentObject: any = this) {

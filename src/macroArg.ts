@@ -11,7 +11,6 @@ export class MacroArgClass {
     this.rawValue = typeof value === 'function' ? value : () => value;
   }
 
-
   get value(): any {
     return this.rawValue();
   }

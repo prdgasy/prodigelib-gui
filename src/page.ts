@@ -17,6 +17,7 @@ export class PageClass {
   static globalId = 0;
   static fillMacroCount = 0;
   static clickMacroCount = 0;
+  static currentPage = this;
 
   constructor(parent: GUI, name?: string, Objects?: MenuObject[]) {
     this.parent = parent;
@@ -90,7 +91,7 @@ export class PageClass {
     // add custom_data if not already
     this.linkParent(button);
     if (button.macroArgs && button.macroArgs.length !== 0) {
-      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/macros/${PageClass.fillMacroCount++}`, () => {
+      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/fill/fill_${PageClass.fillMacroCount++}`, () => {
         raw(`$item replace entity @s container.${button.slot} with ${button.toString()}`);
       });
 
@@ -145,13 +146,13 @@ export class PageClass {
    */
   detectClick(button: ButtonClass) {
     this.linkParent(button);
-    if (button.macroArgs && button.macroArgs.length !== 0) {
+    if (button.onClick && button.macroArgs && button.macroArgs.length !== 0) {
       const macroCounter = PageClass.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macro_onclick/${macroCounter}`, () => {
+      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/onClick_${macroCounter}`, () => {
         if (button.onClick) button.onClick();
       });
 
-      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/macros/${macroCounter}`, () => {
+      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/detect_${macroCounter}`, () => {
         if (button.onClick) {
           // Use normal text if no special slot macro args
           let macroTag = '';
