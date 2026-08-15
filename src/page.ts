@@ -149,7 +149,7 @@ export class PageClass {
     this.linkParent(button);
     if (button.onClick && button.macroArgs && button.macroArgs.length !== 0) {
       const macroCounter = PageClass.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/onClick_${macroCounter}`, () => {
+      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/onclick_${macroCounter}`, () => {
         if (button.onClick) button.onClick();
       });
 
