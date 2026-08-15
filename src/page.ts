@@ -1,6 +1,7 @@
 import { _, Data, MCFunction, raw } from "sandstone";
 import { ButtonClass } from "./button";
 import { GUI } from "./gui";
+import { MacroArgClass } from "./macroArg";
 import { MCFunctionType, MenuObject } from "./types";
 
 export class PageClass {
@@ -156,7 +157,7 @@ export class PageClass {
         if (button.onClick) {
           // Use normal text if no special slot macro args
           let macroTag = '';
-          if (typeof (button.slot) == 'string') macroTag = '$';
+          if (button.slot instanceof MacroArgClass) macroTag = '$';
           raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
         }
       });
