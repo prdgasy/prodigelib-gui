@@ -1,18 +1,38 @@
 import {
-  _, Data, execute, Label, MCFunction, Objective, rel, Score, scoreboard,
-  Selector, summon, tellraw, functionCmd, raw, kill, tp, abs,
-  forceload, loot, Variable, clear, LootTable, give,
+  _,
+  abs,
+  clear,
+  Data,
+  DataPointClass,
+  execute,
+  forceload,
+  functionCmd,
+  kill,
+  Label,
+  LabelClass,
+  loot,
+  LootTable,
+  MCFunction,
+  NonEmptyString,
+  Objective,
+  ObjectiveClass,
+  raw,
+  rel,
   sandstonePack,
-  setblock, DataPointClass, LabelClass, ObjectiveClass
-
-} from 'sandstone'
+  Score, scoreboard,
+  Selector,
+  setblock,
+  summon, tellraw,
+  tp,
+  Variable
+} from 'sandstone';
 
 import { Indexer } from './indexer';
 
 
-import { Text, MCFunctionType, MenuObject } from './types';
-import { PageClass } from './page';
 import { ButtonClass } from './button';
+import { PageClass } from './page';
+import { MCFunctionType, MenuObject } from './types';
 
 export class GUI {
 
@@ -44,7 +64,7 @@ export class GUI {
     this.macroStorage = Data('storage', `${sandstonePack.defaultNamespace}:${this.name}`, '__gui.macroKeys');
 
     this.Ids = Objective.create(`${name}.gui.id`)
-    this.GUILabel = Label(`${name}.gui`)
+    this.GUILabel = Label(`${name}.gui` as NonEmptyString)
 
 
 
