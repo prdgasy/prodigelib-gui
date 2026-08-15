@@ -155,10 +155,10 @@ export class PageClass {
 
       const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/detect_${macroCounter}`, () => {
         if (button.onClick) {
-          // Use normal text if no special slot macro args
-          let macroTag = '';
-          if (button.slot instanceof MacroArgClass) macroTag = '$';
-          raw(`${macroTag}execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
+          const detectLine = `execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`;
+          
+          if (button.slot instanceof MacroArgClass) raw("$" + detectLine);
+          else raw(detectLine);
         }
       });
 
