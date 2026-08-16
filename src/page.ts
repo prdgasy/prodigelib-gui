@@ -92,12 +92,12 @@ export class PageClass {
     // add custom_data if not already
     this.linkParent(button);
     if (button.macroArgs && button.macroArgs.length !== 0) {
-      const macroFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/fill/fill_${PageClass.fillMacroCount++}`, () => {
+      const place = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/place/place_${PageClass.fillMacroCount++}`, () => {
         raw(`$item replace entity @s container.${button.slot} with ${button.toString()}`);
       });
 
       this.setMacroArgs(button);
-      raw(`function ${macroFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
+      raw(`function ${place.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
 
     } else {
       raw(`item replace entity @s container.${button.slot} with ${button.toString()}`);
@@ -149,14 +149,14 @@ export class PageClass {
     this.linkParent(button);
     if (button.onClick && button.macroArgs && button.macroArgs.length !== 0) {
       const macroCounter = PageClass.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/onclick_${macroCounter}`, () => {
+      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/onclick/onclick_${macroCounter}`, () => {
         if (button.onClick) button.onClick();
       });
 
-      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/click/detect_${macroCounter}`, () => {
+      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/detect/detect_${macroCounter}`, () => {
         if (button.onClick) {
           const detectLine = `execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`;
-          
+
           if (button.slot instanceof MacroArgClass) raw("$" + detectLine);
           else raw(detectLine);
         }
