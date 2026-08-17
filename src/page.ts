@@ -146,32 +146,26 @@ export class PageClass {
    * @param button Button clicked on f
    */
   detectClick(button: ButtonClass) {
+    if (!button.onClick) return;
     this.linkParent(button);
     if (button.onClick && button.macroArgs && button.macroArgs.length !== 0) {
       const macroCounter = PageClass.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/onclick/onclick_${macroCounter}`, () => {
-        if (button.onClick) button.onClick();
-      });
+      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/onclick/onclick_${macroCounter}`, () => button.onClick!()
+      );
 
       const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/detect/detect_${macroCounter}`, () => {
-        if (button.onClick) {
-          const detectLine = `execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`;
+        const detectLine = `execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`;
 
-          if (button.slot instanceof MacroArgClass) raw("$" + detectLine);
-          else raw(detectLine);
-        }
-      });
+        if (button.slot instanceof MacroArgClass) raw("$" + detectLine);
+        else raw(detectLine);
+      }
+      );
 
       this.setMacroArgs(button);
       raw(`function ${detectMissingItem.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
 
     } else {
-      // No macro
-      if (button.onClick) {
-        _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => {
-          if (button.onClick) button.onClick();
-        })
-      }
+      _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => button.onClick!())
     }
   }
 

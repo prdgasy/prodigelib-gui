@@ -6,7 +6,7 @@ import { Item, MCFunctionType, Text } from "./types";
 
 
 export class ButtonClass {
-  static currentButton: ButtonClass;
+  static currentButton?: ButtonClass;
   static pendingArgs: MacroArgClass[] = [];
   id: Macroable<Item>;
   slot: Macroable<number>;
@@ -20,8 +20,6 @@ export class ButtonClass {
   onClick?: MCFunctionType | (() => void);
 
   macroArgs: MacroArgClass[];
-
-  parentTagged = false;
 
   parent?: GUI;
 
@@ -47,6 +45,8 @@ export class ButtonClass {
     ButtonClass.pendingArgs = [];
 
     this.catchArgs();
+
+    ButtonClass.currentButton = undefined;
 
   }
 
