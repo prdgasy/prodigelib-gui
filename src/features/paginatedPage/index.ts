@@ -1,24 +1,37 @@
-import { Objective, Score } from "sandstone";
-import { MenuObject } from "../../types";
+import { Objective, playsound, rel, Score } from "sandstone";
+import { ButtonClass } from "../../button";
 import { Page } from "../../page";
 import { GUI } from "../../gui";
 import { PaginatedButtonClass } from "./button";
 import { Button } from "../../..";
 
+type SoundEvent = Parameters<typeof playsound>[0];
+
+interface NavigationButtonsOptions {
+  nextButton: ButtonClass;
+  nextButtonEnd?: ButtonClass;
+  previousButton: ButtonClass;
+  previousButtonEnd?: ButtonClass;
+}
+
+export type NavigationButtons = Required<NavigationButtonsOptions>;
+
 export class PaginatedPageClass {
   parent: GUI;
   name: string;
-  staticObjects: MenuObject[];
+  staticObjects: ButtonClass[];
   objects: PaginatedButtonClass[];
   objectsLength: number;
   objectsSlots: number[];
-  nextPageSlot: number;
-  previousPageSlot: number;
+
+  navigationButtons: NavigationButtons;
+
+  navigationButtonsSound?: SoundEvent;
 
   static PaginatedId = 0;
   id: number;
 
-  constructor(parent: GUI, name?: string, staticObjectList?: MenuObject[], objectList?: PaginatedButtonClass[], objectSlots?: number[], nextPageSlot?: number, previousPageSlot?: number) {
+  constructor(parent: GUI, name?: string, staticObjectList?: ButtonClass[], objectList?: PaginatedButtonClass[], objectSlots?: number[], navigationButtons?: NavigationButtonsOptions, navigationButtonsSound?: SoundEvent) {
     this.id = PaginatedPageClass.PaginatedId++;
     this.parent = parent;
     this.name = name ?? `PaginatedPage_${this.id}`;
@@ -26,18 +39,40 @@ export class PaginatedPageClass {
     this.objects = objectList ?? [];
     this.objectsLength = objectList ? objectList.length : 0;
     this.objectsSlots = objectSlots ?? [...Array(18).keys()];
-    this.nextPageSlot = nextPageSlot ?? 25;
-    this.previousPageSlot = previousPageSlot ?? 26;
+
+    const nextButton = navigationButtons?.nextButton ?? Button({
+      slot: 26,
+      id: 'paper',
+      name: { text: 'Next', color: 'yellow' },
+    });
+
+    const previousButton = navigationButtons?.previousButton ?? Button({
+      slot: 25,
+      id: 'paper',
+      name: { text: 'Previous', color: 'yellow' },
+    });
+
+    this.navigationButtons = {
+      nextButton,
+      nextButtonEnd: navigationButtons?.nextButtonEnd ?? nextButton,
+      previousButton,
+      previousButtonEnd: navigationButtons?.previousButtonEnd ?? previousButton,
+    };
+
+
+    this.navigationButtonsSound = navigationButtonsSound ?? undefined;
+
   }
 
-  private getObjectsList(totalPageNumber: number): MenuObject[][] {
+  private getObjectsList(totalPageNumber: number): ButtonClass[][] {
 
-    const objectsList: MenuObject[][] = [];
+    const objectsList: ButtonClass[][] = [];
     for (let h = 0; h < totalPageNumber; h++) {
-      const currentObjects: MenuObject[] = [];
-      const newStart = h * this.objectsSlots.length;
-      for (let i = newStart; i < this.objectsLength; i++) {
-        const slot = this.objectsSlots[i - newStart];
+      const currentObjects: ButtonClass[] = [];
+      const start = h * this.objectsSlots.length;
+      const stop = Math.min(this.objectsLength, start + this.objectsSlots.length);
+      for (let i = start; i < stop; i++) {
+        const slot = this.objectsSlots[i - start];
         currentObjects.push(this.objects[i].toButton(slot));
       }
       objectsList.push(currentObjects);
@@ -46,34 +81,32 @@ export class PaginatedPageClass {
     return objectsList;
   }
 
-  buildPage(localObjects: MenuObject[], pageNumber: number, totalPageNumber: number) {
+  buildPage(localObjects: ButtonClass[], pageNumber: number, totalPageNumber: number) {
     const newPage = Page(this.parent, `${this.name}_${pageNumber}`, [...this.staticObjects, ...localObjects]);
 
     // next button
+
+    this.navigationButtons.nextButton.onClick = () => {
+      if (this.navigationButtonsSound) {
+        playsound(this.navigationButtonsSound, 'master', '@p', rel(0, 0, 0), 1, 0);
+      }
+      this.parent.toPage(`${this.name}_${pageNumber + 1}`);
+    }
+
     const isLastPage: boolean = (pageNumber == totalPageNumber - 1)
 
-    const nextOnClick = isLastPage ? () => { } : () => this.parent.toPage(`${this.name}_${pageNumber + 1}`);
-    const nextColor = isLastPage ? 'gray' : 'yellow';
+    if (isLastPage) newPage.pushObject(this.navigationButtons.nextButtonEnd);
+    else newPage.pushObject(this.navigationButtons.nextButton);
 
-    newPage.pushObject(Button({
-      slot: this.nextPageSlot,
-      id: 'paper',
-      name: { text: 'Next', color: nextColor },
-      onClick: nextOnClick,
-    }));
+
 
     // previous button
-    const isFirstPage = pageNumber == 0
-    const previousOnClick = isFirstPage ? () => { } : () => this.parent.toPage(`${this.name}_${pageNumber - 1}`);
-    const previousColor = isFirstPage ? 'gray' : 'yellow';
 
+    this.navigationButtons.previousButton.onClick = () => this.parent.toPage(`${this.name}_${pageNumber - 1}`);
 
-    newPage.pushObject(Button({
-      slot: this.previousPageSlot,
-      id: 'paper',
-      name: { text: 'Previous', color: previousColor },
-      onClick: previousOnClick,
-    }));
+    const isFirstPage: boolean = pageNumber == 0;
+    if (isFirstPage) newPage.pushObject(this.navigationButtons.previousButtonEnd);
+    else newPage.pushObject(this.navigationButtons.previousButton);
 
     newPage.build();
   }
@@ -81,7 +114,7 @@ export class PaginatedPageClass {
   build() {
     const totalPageNumber = Math.ceil(this.objectsLength / this.objectsSlots.length);
 
-    const objectsList: MenuObject[][] = this.getObjectsList(totalPageNumber);
+    const objectsList: ButtonClass[][] = this.getObjectsList(totalPageNumber);
 
     for (let i = 0; i < totalPageNumber; i++) {
       this.buildPage(objectsList[i], i, totalPageNumber);
@@ -89,14 +122,14 @@ export class PaginatedPageClass {
   }
 }
 
-export function PaginatedPage({ parent, name, staticObjectList, objectList, objectSlots, nextPageSlot, previousPageSlot }: {
+export function PaginatedPage({ parent, name, staticObjectList, objectList, objectSlots, navigationButtons, navigationButtonsSound }: {
   parent: GUI;
   name?: string;
-  staticObjectList?: MenuObject[];
+  staticObjectList?: ButtonClass[];
   objectList?: PaginatedButtonClass[];
   objectSlots?: number[];
-  nextPageSlot?: number;
-  previousPageSlot?: number;
+  navigationButtons?: NavigationButtonsOptions;
+  navigationButtonsSound?: SoundEvent;
 }): PaginatedPageClass {
-  return new PaginatedPageClass(parent, name!, staticObjectList!, objectList!, objectSlots!, nextPageSlot!, previousPageSlot!);
+  return new PaginatedPageClass(parent, name, staticObjectList, objectList, objectSlots, navigationButtons, navigationButtonsSound);
 }
