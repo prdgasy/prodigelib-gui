@@ -21,7 +21,6 @@ export class PaginatedPageClass {
   name: string;
   staticObjects: ButtonClass[];
   objects: PaginatedButtonClass[];
-  objectsLength: number;
   objectsSlots: number[];
 
   navigationButtons: NavigationButtons;
@@ -37,7 +36,6 @@ export class PaginatedPageClass {
     this.name = name ?? `PaginatedPage_${this.id}`;
     this.staticObjects = staticObjectList ?? [];
     this.objects = objectList ?? [];
-    this.objectsLength = objectList ? objectList.length : 0;
     this.objectsSlots = objectSlots ?? [...Array(18).keys()];
 
     const nextButton = navigationButtons?.nextButton ?? Button({
@@ -73,7 +71,7 @@ export class PaginatedPageClass {
       currentObjects.push(...this.resolveNavigationButtons(h, totalPageNumber));
 
       const start = h * this.objectsSlots.length;
-      const stop = Math.min(this.objectsLength, start + this.objectsSlots.length);
+      const stop = Math.min(this.objects.length, start + this.objectsSlots.length);
       for (let i = start; i < stop; i++) {
         const slot = this.objectsSlots[i - start];
         currentObjects.push(this.objects[i].toButton(slot));
@@ -128,7 +126,7 @@ export class PaginatedPageClass {
   }
 
   build() {
-    const totalPageNumber = Math.ceil(this.objectsLength / this.objectsSlots.length);
+    const totalPageNumber = Math.ceil(this.objects.length / this.objectsSlots.length);
 
     const objectsList: ButtonClass[][] = this.getObjectsList(totalPageNumber);
 
