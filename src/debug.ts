@@ -1,4 +1,4 @@
-import { IS_DEBUG } from "../index";
+export const IS_DEBUG = false;
 
 export function debugLog(arg: any) {
   if (IS_DEBUG) {

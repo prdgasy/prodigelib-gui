@@ -1,9 +1,9 @@
 import { Objective, playsound, rel, Score } from "sandstone";
-import { ButtonClass } from "../../button";
+import { Button, ButtonClass } from "../../button";
 import { Page } from "../../page";
 import { GUI } from "../../gui";
 import { PaginatedButtonClass } from "./button";
-import { Button } from "../../..";
+export * from "./button";
 
 type SoundEvent = Parameters<typeof playsound>[0];
 
@@ -69,6 +69,9 @@ export class PaginatedPageClass {
     const objectsList: ButtonClass[][] = [];
     for (let h = 0; h < totalPageNumber; h++) {
       const currentObjects: ButtonClass[] = [];
+
+      currentObjects.push(...this.resolveNavigationButtons(h, totalPageNumber));
+
       const start = h * this.objectsSlots.length;
       const stop = Math.min(this.objectsLength, start + this.objectsSlots.length);
       for (let i = start; i < stop; i++) {
@@ -81,32 +84,45 @@ export class PaginatedPageClass {
     return objectsList;
   }
 
-  buildPage(localObjects: ButtonClass[], pageNumber: number, totalPageNumber: number) {
-    const newPage = Page(this.parent, `${this.name}_${pageNumber}`, [...this.staticObjects, ...localObjects]);
+  resolveNavigationButtons(pageIndex: number, totalPageNumber: number): ButtonClass[] {
+    const navigationButtons: ButtonClass[] = [];
+    const sound = () => { if (this.navigationButtonsSound) playsound(this.navigationButtonsSound, 'master', '@p', rel(0, 0, 0), 1, 0); }
 
-    // next button
-
-    this.navigationButtons.nextButton.onClick = () => {
-      if (this.navigationButtonsSound) {
-        playsound(this.navigationButtonsSound, 'master', '@p', rel(0, 0, 0), 1, 0);
-      }
-      this.parent.toPage(`${this.name}_${pageNumber + 1}`);
+    const cloneButton = (btn: ButtonClass): ButtonClass =>
+      Object.assign(Object.create(Object.getPrototypeOf(btn)), btn);
+    const navigationButtonsClone: NavigationButtons = {
+      nextButton: cloneButton(this.navigationButtons.nextButton),
+      nextButtonEnd: cloneButton(this.navigationButtons.nextButtonEnd),
+      previousButton: cloneButton(this.navigationButtons.previousButton),
+      previousButtonEnd: cloneButton(this.navigationButtons.previousButtonEnd),
+    };
+    //  using clone to prevent index object smashing
+    navigationButtonsClone.nextButton.onClick = () => {
+      sound();
+      this.parent.toPage(`${this.name}_${pageIndex + 1}`);
     }
 
-    const isLastPage: boolean = (pageNumber == totalPageNumber - 1)
-
-    if (isLastPage) newPage.pushObject(this.navigationButtons.nextButtonEnd);
-    else newPage.pushObject(this.navigationButtons.nextButton);
-
+    const isLastPage: boolean = (pageIndex == totalPageNumber - 1)
+    if (isLastPage) navigationButtons.push(navigationButtonsClone.nextButtonEnd);
+    else navigationButtons.push(navigationButtonsClone.nextButton);
 
 
-    // previous button
 
-    this.navigationButtons.previousButton.onClick = () => this.parent.toPage(`${this.name}_${pageNumber - 1}`);
+    navigationButtonsClone.previousButton.onClick = () => {
+      sound();
+      if (pageIndex == 1) this.parent.toPage(`${this.name}`);
+      else this.parent.toPage(`${this.name}_${pageIndex - 1}`);
+    }
+    const isFirstPage: boolean = pageIndex == 0;
+    if (isFirstPage) navigationButtons.push(navigationButtonsClone.previousButtonEnd);
+    else navigationButtons.push(navigationButtonsClone.previousButton);
 
-    const isFirstPage: boolean = pageNumber == 0;
-    if (isFirstPage) newPage.pushObject(this.navigationButtons.previousButtonEnd);
-    else newPage.pushObject(this.navigationButtons.previousButton);
+    return navigationButtons;
+  }
+
+  buildPage(localObjects: ButtonClass[], pageIndex: number, totalPageNumber: number) {
+    const name = (pageIndex == 0) ? `${this.name}` : `${this.name}_${pageIndex}`;
+    const newPage = Page(this.parent, name, [...this.staticObjects, ...localObjects]);
 
     newPage.build();
   }

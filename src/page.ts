@@ -46,7 +46,7 @@ export class PageClass {
    * Combination of placeItem and detectClick when different action is not needed.
    * Auto-detects the compilation context to avoid mixing files.
    */
-  emitButton(button: ButtonClass) {
+  rawEmit(button: ButtonClass) {
     // 🟢 Si on est en train d'exécuter la boucle de "fill", on ne pose QUE l'item
     if (this.currentContext === 'fill') {
       this.placeItem(button);

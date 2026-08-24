@@ -1,6 +1,6 @@
 import { MCFunction } from "sandstone";
 import { debugLog } from "./debug";
-import { GUI } from './gui';
+import type { GUI } from './gui';
 import { MacroArgClass, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
