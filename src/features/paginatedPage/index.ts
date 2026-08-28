@@ -3,6 +3,7 @@ import { Button, ButtonClass } from "../../button";
 import { Page } from "../../page";
 import { GUI } from "../../gui";
 import { PaginatedButtonClass } from "./button";
+import { MenuObject } from "../../types";
 export * from "./button";
 
 type SoundEvent = Parameters<typeof playsound>[0];
@@ -19,7 +20,7 @@ export type NavigationButtons = Required<NavigationButtonsOptions>;
 export class PaginatedPageClass {
   parent: GUI;
   name: string;
-  staticObjects: ButtonClass[];
+  staticObjects: MenuObject[];
   objects: PaginatedButtonClass[];
   objectsSlots: number[];
 
@@ -30,7 +31,7 @@ export class PaginatedPageClass {
   static PaginatedId = 0;
   id: number;
 
-  constructor(parent: GUI, name?: string, staticObjectList?: ButtonClass[], objectList?: PaginatedButtonClass[], objectSlots?: number[], navigationButtons?: NavigationButtonsOptions, navigationButtonsSound?: SoundEvent) {
+  constructor(parent: GUI, name?: string, staticObjectList?: MenuObject[], objectList?: PaginatedButtonClass[], objectSlots?: number[], navigationButtons?: NavigationButtonsOptions, navigationButtonsSound?: SoundEvent) {
     this.id = PaginatedPageClass.PaginatedId++;
     this.parent = parent;
     this.name = name ?? `PaginatedPage_${this.id}`;
@@ -139,7 +140,7 @@ export class PaginatedPageClass {
 export function PaginatedPage({ parent, name, staticObjectList, objectList, objectSlots, navigationButtons, navigationButtonsSound }: {
   parent: GUI;
   name?: string;
-  staticObjectList?: ButtonClass[];
+  staticObjectList?: MenuObject[];
   objectList?: PaginatedButtonClass[];
   objectSlots?: number[];
   navigationButtons?: NavigationButtonsOptions;

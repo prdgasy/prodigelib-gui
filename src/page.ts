@@ -76,7 +76,7 @@ export class PageClass {
     if (GUI.isButton(e)) {
       this.placeItem(e);
     } else if (typeof e === 'function') {
-      e();
+      (e as any)(this);
     } else {
       e.fill();
     }
@@ -135,7 +135,7 @@ export class PageClass {
     if (GUI.isButton(e)) {
       this.detectClick(e);
     } else if (typeof e === 'function') {
-      e();
+      (e as any)(this);
     } else {
       e.click()
     }
