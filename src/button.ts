@@ -5,6 +5,17 @@ import { MacroArgClass, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
 
+type ButtonOptions = {
+  id: Macroable<Item>,
+  slot: Macroable<number>,
+  count?: Macroable<number>,
+  name?: Text | Macroable<string>,
+  lore?: (Text | Macroable<string>)[],
+  components?: string[],
+  onClick?: MCFunctionType | (() => void),
+  macroArgs?: MacroArgClass[]
+}
+
 export class ButtonClass {
   static currentButton?: ButtonClass;
   static pendingArgs: MacroArgClass[] = [];
@@ -12,8 +23,8 @@ export class ButtonClass {
   slot: Macroable<number>;
   count: Macroable<number>;
 
-  name: Macroable<Text>;
-  lore: Macroable<Text[]>;
+  name: Text | Macroable<string>;
+  lore: (Text | Macroable<string>)[];
   components: string[];
 
 
@@ -23,20 +34,20 @@ export class ButtonClass {
 
   parent?: GUI;
 
-  constructor(id: Macroable<Item>, slot: Macroable<number>, count?: Macroable<number>, name?: Macroable<Text>, lore?: Macroable<Text[]>, components?: string[], onClick?: MCFunctionType | (() => void), macroArgs?: MacroArgClass[]) {
+  constructor(options: ButtonOptions) {
 
 
     // Set current button before evaluating properties that might contain macros
     ButtonClass.currentButton = this;
 
-    this.id = id;
-    this.slot = slot;
-    this.count = count ?? 1;
-    this.name = name ?? { text: id.toString() };
-    this.lore = lore ?? [];
-    this.components = components ?? [];
-    this.onClick = onClick;
-    this.macroArgs = macroArgs ?? [];
+    this.id = options.id;
+    this.slot = options.slot;
+    this.count = options.count ?? 1;
+    this.name = options.name ?? { text: options.id.toString() };
+    this.lore = options.lore ?? [];
+    this.components = options.components ?? [];
+    this.onClick = options.onClick;
+    this.macroArgs = options.macroArgs ?? [];
 
     // pending args injections
     for (const arg of ButtonClass.pendingArgs) {
@@ -78,13 +89,15 @@ export class ButtonClass {
     if (!this.macroArgs.includes(arg)) this.macroArgs.push(arg);
   }
 
-  resolveJSONText(text: Macroable<Text | Text[]>): string {
+  resolveJSONText(text: Macroable<string> | (Text | Macroable<string>)[] | Text | Text[]): string {
     if (Array.isArray(text)) {
       return text.map(l => this.resolveJSONText(l)).join(',');
     } else if (text instanceof MacroArgClass) {
       return text.toString();
+    } else if (typeof text === 'string') {
+      return `{text: "${text}", italic: false, color: "white"}`;
     } else {
-      return `{text: "${text.text}", color: "${text.color ? text.color : 'white'}", italic: ${text.italic ? text.italic : 'false'}, bold: ${text.bold ? text.bold : 'false'}}`;
+      return `{text: "${text.text}", color: "${text.color ?? 'white'}", italic: ${text.italic ?? 'false'}, bold: ${text.bold ?? 'false'}}`;
     }
   }
 
@@ -114,15 +127,7 @@ export function Button({
   lore,
   components,
   onClick
-}: {
-  id: Macroable<Item>;
-  slot: Macroable<number>;
-  count?: Macroable<number>;
-  name?: Macroable<Text>;
-  lore?: Macroable<Text[]>;
-  components?: string[];
-  onClick?: MCFunctionType | (() => void);
-}): ButtonClass {
+}: ButtonOptions): ButtonClass {
   // On passe les variables au constructeur
-  return new ButtonClass(id, slot, count, name, lore, components, onClick);
+  return new ButtonClass({ id, slot, count, name, lore, components, onClick });
 }
