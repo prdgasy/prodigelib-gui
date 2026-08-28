@@ -5,7 +5,7 @@ import { MacroArgClass, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
 
-type ButtonOptions = {
+export type ButtonOptions = {
   id: Macroable<Item>,
   slot: Macroable<number>,
   count?: Macroable<number>,
