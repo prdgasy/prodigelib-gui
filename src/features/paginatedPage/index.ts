@@ -126,6 +126,10 @@ export class PaginatedPageClass {
     newPage.build();
   }
 
+  rawEmit(button: ButtonClass) {
+    
+  }
+
   build() {
     const totalPageNumber = Math.ceil(this.objects.length / this.objectsSlots.length);
 

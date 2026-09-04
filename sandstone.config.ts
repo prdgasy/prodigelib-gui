@@ -4,11 +4,11 @@ export default {
   name: 'prodigelib-gui',
   packs: {
     datapack: {
-      description: [ 'A ', { text: 'Sandstone', color: 'gold' }, ' datapack.' ],
+      description: ['A ', { text: 'Sandstone', color: 'gold' }, ' datapack.'],
       packFormat: 98,
     } as DatapackConfig,
     resourcepack: {
-      description: [ 'A ', { text: 'Sandstone', color: 'gold' }, ' resource pack.' ],
+      description: ['A ', { text: 'Sandstone', color: 'gold' }, ' resource pack.'],
       packFormat: 79,
     } as ResourcePackConfig
   },

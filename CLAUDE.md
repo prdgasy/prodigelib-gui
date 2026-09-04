@@ -127,7 +127,7 @@ Under the hood, `asyncContext` works by:
 3. When scheduled time arrives, selecting all entities with that tag whose timer matches current gametime
 4. Running the continuation `as` and `at` each matched entity
 
-This elegantly handles multiple entities sleeping simultaneously - each wakes up independently when their timer expires.
+This elegantly handles multiple entities sleeping simultaneously - each wakes up independently when their timer eXpires.
 
 ### Macros & MCFunction Parameters
 [docs/features/macros.md](https://github.com/sandstone-mc/sandstone-documentation/blob/master/docs/features/macros.md)

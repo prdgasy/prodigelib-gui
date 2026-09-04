@@ -27,6 +27,7 @@ export class MacroArgClass {
 // 1. 🟢 On ajoute les surcharges (Overloads) pour guider TypeScript
 export function MacroArg(strings: TemplateStringsArray, ...values: any[]): string;
 export function MacroArg(value: any): MacroArgClass;
+
 // 🟢 Fonction hybride qui gère l'appel normal ET le Tagged Template
 export function MacroArg(stringsOrValue: any, ...values: any[]): any {
   // 1. Si appelée comme Tagged Template Literal: $`texte ${valeur}`
