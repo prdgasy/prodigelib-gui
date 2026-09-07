@@ -114,7 +114,7 @@ export class ButtonClass {
     if (this.lore) namePart = ', lore=[' + this.resolveJSONText(this.lore) + ']';
     return this.id + '['
       + this.components.toString() + namePart + lorePart
-      + ']'
+      + '] ' + this.count;
   }
 }
 
