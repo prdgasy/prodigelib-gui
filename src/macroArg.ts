@@ -4,11 +4,15 @@ export type Macroable<T> = T | MacroArgClass;
 
 export class MacroArgClass {
   static id = 0;
+  static registry = new Map<string, MacroArgClass>();
+
   key: string;
   rawValue: () => any;
   constructor(value: any) {
     this.key = `macroArg_${String((MacroArgClass.id++))}`;
     this.rawValue = typeof value === 'function' ? value : () => value;
+
+    MacroArgClass.registry.set(this.key, this);
   }
 
   get value(): any {
@@ -16,21 +20,13 @@ export class MacroArgClass {
   }
 
   toString(): string {
-    if (ButtonClass.currentButton) {
-      ButtonClass.currentButton.inject(this);
-    } else {
-      ButtonClass.pendingArgs.push(this);
-    }
     return `$(${this.key})`;
   }
 }
-// 1. 🟢 On ajoute les surcharges (Overloads) pour guider TypeScript
+
 export function MacroArg(strings: TemplateStringsArray, ...values: any[]): string;
 export function MacroArg(value: any): MacroArgClass;
-
-// 🟢 Fonction hybride qui gère l'appel normal ET le Tagged Template
 export function MacroArg(stringsOrValue: any, ...values: any[]): any {
-  // 1. Si appelée comme Tagged Template Literal: $`texte ${valeur}`
   if (Array.isArray(stringsOrValue) && 'raw' in stringsOrValue) {
     const strings = stringsOrValue as unknown as TemplateStringsArray;
     let result = strings[0];
@@ -39,22 +35,14 @@ export function MacroArg(stringsOrValue: any, ...values: any[]): any {
       let val = values[i];
 
       if (val instanceof MacroArgClass) {
-        // C'est déjà une macro, on ne fait rien de plus
       } else if (typeof val === 'function' || (val !== null && typeof val === 'object' && !Array.isArray(val))) {
-        // C'est un Score ou un Data Point (objet non array), on l'encapsule !
         val = new MacroArgClass(val);
       }
-
-      // La concaténation appelle automatiquement val.toString()
-      // Ce qui ajoute la macro aux pendingArgs
       result += String(val) + strings[i + 1];
     }
 
-    return result; // Retourne "Level $(macroArg_0)"
-  }
-
-  // 2. Appel classique : $(valeur)
-  if (stringsOrValue instanceof MacroArgClass) {
+    return result;
+  } else if (stringsOrValue instanceof MacroArgClass) {
     throw Error(`${stringsOrValue} is already a Macro.`);
   }
 

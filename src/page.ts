@@ -1,4 +1,4 @@
-import { _, Data, MCFunction, raw } from "sandstone";
+import { _, Data, MCFunction, raw, returnCmd } from "sandstone";
 import { ButtonClass } from "./button";
 import { GUI } from "./gui";
 import { MacroArgClass } from "./macroArg";
@@ -15,6 +15,7 @@ export class PageClass {
 
   currentContext: 'fill' | 'click' | null = null;
 
+  clickButtons: ButtonClass[] = [];
   static globalId = 0;
   static fillMacroCount = 0;
   static clickMacroCount = 0;
@@ -53,12 +54,14 @@ export class PageClass {
     }
     // 🟢 Si on est en train d'exécuter la boucle de "click", on ne met QUE la détection
     else if (this.currentContext === 'click') {
-      this.detectClick(button);
+      this.clickButtons.push(button);
     }
     // 🟢 Sécurité si appelé en dehors des boucles principales de Sandstone
     else {
       console.error("No context");
     }
+
+    return raw("");
   }
 
   /**
@@ -124,11 +127,33 @@ export class PageClass {
    * Generates the click detection function for a page.
    */
   click(): MCFunctionType {
-    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/${this.id}`, () => {
-      this.currentContext = 'click';
-      this.Objects.forEach(e => this.readClickElement(e));
-      this.currentContext = null;
-    })
+    return MCFunction(
+      `__gui/${this.parent.name.toLowerCase()}/pages/click/${this.id}`,
+      () => {
+        this.currentContext = 'click';
+
+        // Reset in case the function is generated more than once.
+        this.clickButtons = [];
+
+        // ----------------------------------------------------------
+        // First pass:
+        // Execute the page objects.
+        //
+        // rawEmit() ONLY collects buttons here.
+        // ----------------------------------------------------------
+        this.Objects.forEach(e => this.readClickElement(e));
+
+        this.currentContext = null;
+
+        // ----------------------------------------------------------
+        // Second pass:
+        // Generate ALL click detection outside the _.if() blocks.
+        // ----------------------------------------------------------
+        this.clickButtons.forEach(button => {
+          this.detectClick(button);
+        });
+      }
+    );
   }
 
   readClickElement(e: MenuObject) {
