@@ -1,7 +1,7 @@
 {
   "name": "@prodigelib/gui",
   "@prodigelib/gui": "github:prdgasy/prodigelib-gui",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A pack created with Sandstone",
   "type": "module",
   "module": "src/test.ts",
