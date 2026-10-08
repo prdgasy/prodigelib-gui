@@ -3,7 +3,6 @@ import type { Gui } from './gui';
 import { MacroArgument, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
-
 export type ButtonOptions = {
   id: Macroable<Item>,
   slot?: Macroable<number>,
