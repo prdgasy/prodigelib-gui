@@ -13,7 +13,7 @@ export default {
     } as ResourcePackConfig
   },
   onConflict: {
-    default: 'warn',
+    default: 'ignore',
   },
   namespace: 'prodigelib-gui',
   packUid: 'f1r_rq2-',

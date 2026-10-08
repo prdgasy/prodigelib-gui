@@ -1,339 +1,284 @@
 import {
-  _,
-  abs,
-  clear,
-  Data,
-  DataPointClass,
-  execute,
-  forceload,
-  functionCmd,
-  kill,
-  Label,
-  LabelClass,
-  loot,
+  _, abs, Data, DataPointClass, execute, forceload, functionCmd, kill, Label, LabelClass, MCFunction, NonEmptyString, Objective, ObjectiveClass, raw, rel, Score, scoreboard, Selector, setblock, summon, tellraw, tp, Variable, Macro as $,
   LootTable,
-  MCFunction,
-  NonEmptyString,
-  Objective,
-  ObjectiveClass,
-  raw,
-  rel,
   sandstonePack,
-  Score, scoreboard,
-  Selector,
-  setblock,
-  summon, tellraw,
-  tp,
-  Variable
+  datapack,
+  defaultNamespace
 } from 'sandstone';
 
-import { Indexer } from './indexer';
+import { Button } from './button';
+import { PageClass, PageOptions } from './page';
+import { GuiObject, MCFunctionType, SoundEvent } from './types';
+import { VectorClass } from 'sandstone/variables';
+import { DataPack } from 'sandstone/pack';
+import { CJMap } from '../lib/CJMap';
+import { NavigationButtonsOptions, PaginatedPage } from './features/paginatedPage';
+
+export class Gui {
+  public name: string;
+  public trigger!: Score;
+  public tag: LabelClass;
+  public pages: PageClass[] = [];
+  public currentItems = Data('entity', '@s', 'Items');
+  public static ns = defaultNamespace.toString();
+
+  private currentPage: Score;
+  private linkId: ObjectiveClass;
+  private shulkerBoxPos!: VectorClass<any>;
+  private data: DataPointClass;
+
+  public pageMap: CJMap<string, number>;
+
+  public pageNames = new Set<string>();
 
 
-import { ButtonClass } from './button';
-import { PageClass } from './page';
-import { MCFunctionType, MenuObject } from './types';
+  static globalId = 0;
 
-export class GUI {
+  constructor(name?: string, triggerCommandString?: string) {
+    this.name = name ?? `gui_anon_${Gui.globalId++}`;
+    this.defineTrigger(triggerCommandString);
 
-  name: string
-  triggerCmd: string
+    this.data = Data('storage', 'prodigelib:prodigelib', 'gui').select(this.name);
+    this.currentPage = Objective.create(`__lib.gui.${this.name}.page`)('@s');
 
-  Pages: PageClass[] = []
+    this.pageMap = new CJMap([], this.name);
 
-  macroStorage: DataPointClass<'storage'>
-  pageIdScore: Score;
-  pageNameIndex = Indexer();
+    this.linkId = Objective.create(`__lib.gui.${this.name}.id`);
+    this.tag = Label(`__lib.gui.${this.name}` as NonEmptyString);
 
-  Ids: ObjectiveClass
-  GUILabel: LabelClass
+    this.findLinkedEntitys();
 
-  refresh: MCFunctionType
-  clickFinder: MCFunctionType;
-
-  datapackId: number;
-
-
-  constructor(name: string, triggerCmd: string, datapackId: number) {
-
-    this.name = name
-    this.triggerCmd = triggerCmd
-
-    this.pageIdScore = Objective.create(`${name}.page`)('@s')
-
-    this.macroStorage = Data('storage', `${sandstonePack.defaultNamespace}:${this.name}`, '__gui.macroKeys');
-
-    this.Ids = Objective.create(`${name}.gui.id`)
-    this.GUILabel = Label(`${name}.gui` as NonEmptyString)
-
-
-
-    this.defineTrigger()
-    this.findObjs()
-
-    this.refresh = this.defineRefresh()
-    this.clickFinder = this.defineClickFinder()
-
-    this.datapackId = datapackId;
-    forceload.add([this.datapackId, this.datapackId]);
-    setblock(abs(this.datapackId, 0, this.datapackId), 'yellow_shulker_box');
+    this.setShulkerBox();
   }
 
+  // == DEFINE FUNCTION & ON LOAD ==
+  private setShulkerBox() {
+    const pos = 93000 + Gui.globalId++;
+    forceload.add([pos, pos]);
+    this.shulkerBoxPos = abs(pos, 0, pos);
+    setblock(this.shulkerBoxPos, 'yellow_shulker_box');
+  }
 
-  /* -------------------------------------------------------------------------- */
-  /*                             ENTITY MANAGEMENT                              */
-  /* -------------------------------------------------------------------------- */
+  private defineTrigger(triggerCommandString?: string) {
+    const commandName = triggerCommandString ?? this.name;
+    this.trigger = Objective.create(commandName, 'trigger')('@s');
 
-  /**
-   * Links players and GUI entities that share the same ID.
-   */
-  findObjs(): MCFunctionType {
-
-    return MCFunction(`__gui/${this.name.toLowerCase()}/findobjs`, () => {
-
-      execute
-        .as('@a')
-        .at('@s')
-        .as(Selector('@e', { type: 'chest_minecart', tag: [this.GUILabel] }))
-        .run(() => {
-
-          _.if(this.Ids('@p')['=='](this.Ids('@s')), () => {
-            this.main()
-          })
-
+    return MCFunction(`__lib/gui/${this.name.toLowerCase()}/trigger`, () => {
+      execute.as('@a').at('@s').run(() => {
+        _.if(this.trigger, () => {
+          this.trigger.reset();
+          this.summon();
         })
-
+        scoreboard.players.enable(this.trigger);
+      })
     }, { runEveryTick: true })
   }
 
+  // == EVERY TICK ==
+  private findLinkedEntitys(): MCFunctionType {
+    return MCFunction(`__lib/gui/${this.name.toLowerCase()}/find_linked_entitys`, () => {
+      execute.as('@a').at('@s')
+        .as(Selector('@e', { type: 'chest_minecart', tag: [this.tag] }))
+        .run(() => {
+          _.if(this.linkId('@p')['=='](this.linkId('@s')), () => {
+            this.loop();
+          })
+        })
+    }, { runEveryTick: true });
+  }
 
-  /**
-   * Main GUI loop.
-   */
-  main() {
+  private loop() {
     execute.at('@s').run(() => {
       _.if(_.not(Selector('@p', { distance: [0, 1] })), () => {
-        this.close()
+        this.close();
       })
     })
 
-    this.returnItems()
-    this.clickDetection()
+    this.returnItems();
+    this.detectClick();
   }
 
-
-  /**
-   * Closes the GUI entity.
-   */
-  close() {
-
-    this.Ids('@p').reset()
-
-    tp(rel(0, -1000, 0))
-    kill('@s')
-  }
-
-
-  /* -------------------------------------------------------------------------- */
-  /*                              CLICK DETECTION                               */
-  /* -------------------------------------------------------------------------- */
-
-  /**
-   * Detects item removal (click events).
-   */
-  clickDetection() {
-
-    const clicked = Variable(0)
-
-    execute.store.success(clicked).run(() => {
-      clear('@p', `*[custom_data={${this.name}:1b}]`)
-    })
-
-    _.if(clicked, () => {
-      this.clickFinder();
-      this.refresh();
-    })
-  }
-
-
-  /**
-   * Returns items removed from the GUI to the player.
-   */
-  returnItems() {
-
-    const copiedItems = Data('block', abs(this.datapackId, 0, this.datapackId), 'Items')
-    const guiItems = Data('entity', '@s', 'Items')
-
-    copiedItems.set(guiItems)
-
-    copiedItems
+  private returnItems() {
+    Data('block', this.shulkerBoxPos, 'Items')
+      .set(this.currentItems)
       .select(`[{components: {"minecraft:custom_data": {${this.name}: 1b}}}]`)
-      .remove()
+      .remove();
 
-    const returnedItem = Variable(0)
+    const hasItemToReturn = Variable(0);
 
-    execute.store.result(returnedItem).run(() => {
-      loot.give('@p')
-        .mine(abs(this.datapackId, 0, this.datapackId), 'stick[custom_data = {drop_contents: 1b}]')
-    })
+    execute.store.result(hasItemToReturn).run.loot.give('@p')
+      .mine(this.shulkerBoxPos, 'stick[custom_data={drop_contents: 1b}]');
 
-    _.if(returnedItem, () => {
+    _.if(hasItemToReturn, () => {
       this.refresh()
     })
   }
 
+  private detectClick() {
+    const clicked = Variable(0);
 
-  /* -------------------------------------------------------------------------- */
-  /*                              PAGE MANAGEMENT                               */
-  /* -------------------------------------------------------------------------- */
-  // TYPE GUARD
-  static isButton(e: MenuObject): e is ButtonClass {
-    return 'slot' in e;
+    execute.store.result(clicked).run.clear('@p', `*[custom_data={${this.name}:1b}]`);
+
+    _.if(clicked, () => {
+      this.onClick();
+      this.refresh();
+    })
   }
 
+  // == ON UPDATE ==
+  private refresh() {
+    this.currentItems.remove();
 
+    const find = MCFunction(`__lib/gui/${this.name.toLowerCase()}/find`, (_loop: any, pageId: Score) => {
+      $.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
+    });
 
-  /* -------------------------------------------------------------------------- */
-  /*                               GUI TRIGGER                                  */
-  /* -------------------------------------------------------------------------- */
+    find(this.currentPage);
+  }
 
-  /**
-   * Creates the trigger command handler.
-   */
-  defineTrigger(): MCFunctionType {
-    return MCFunction(`__gui/${this.name.toLowerCase()}/trigger`, () => {
-      execute.as('@a').at('@s').run(() => {
-        const triggerScore = Objective.create(this.triggerCmd, 'trigger')
-        _.if(triggerScore('@s'), () => {
-          triggerScore('@s').reset()
-          this.summonEntity()
-        })
-        scoreboard.players.enable('@s', triggerScore)
+  private onClick() {
+    const onClickFn = MCFunction(`__lib/gui/${this.name.toLowerCase()}/on_click`, (_loop: any, pageId: Score) => {
+      $.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'click')}`);
+    });
+
+    onClickFn(this.currentPage);
+  }
+
+  // == PUBLIC METHOD ==
+  public close() {
+    this.linkId('@p').reset();
+    tp(rel(0, -1000, 0));
+    kill('@s');
+  }
+
+  public summon() {
+    const isfree = _.and(_.block(rel(0, 0, 0), 'air'), _.not(Selector('@e', { type: 'chest_minecart', tag: [this.tag] })));
+    const newTag = Label('this');
+
+    _.if(isfree, () => {
+      summon(
+        'chest_minecart',
+        rel(0, 1, 0),
+        { Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true }
+      );
+
+      const globalId = this.linkId('.global').add(1);
+      const playerId = this.linkId('@s');
+
+      const gui = Selector('@e', { limit: 1, tag: [this.tag, newTag] });
+      const guiId = this.linkId(gui);
+
+      playerId.set(guiId.set(globalId));
+
+      execute.as(gui).run(() => {
+        this.currentPage.set(0)
       })
-    }, { runEveryTick: true })
+
+      execute.as(gui).run(() => {
+        this.refresh();
+      })
+
+      newTag(gui).remove();
+    }).else.run.tellraw('@s', 'No space, or too close to another GUI');
   }
 
+  public switch(page: string | PageClass) {
+    const name = typeof page === 'string' ? page : page.getName();
+    const f = MCFunction(`__lib/gui/${this.name.toLowerCase()}/switch/${name.toLowerCase()}`, () => {
+      if (!this.pageNames.has(name)) throw new Error(
+        `Page "${name}" not found in GUI "${this.name}". ` +
+        `Did you forget to call registerPage() for this page?`
+      );
 
-  /**
-   * Spawns the GUI entity.
-   */
-  summonEntity() {
+      this.currentPage.set(this.pageMap.get(name));
+      this.refresh();
+    })
 
-    const isfree = _.block(rel(0, 0, 0), 'air')
-    const newGui = Label('newGui')
+    return f();
+  }
 
-    _.if(
-      _.and(
-        _.not(Selector('@e', { type: 'chest_minecart', tag: [this.GUILabel] })),
-        isfree
-      ),
-      () => {
+  public createPage(name: string, objects?: GuiObject[], options?: PageOptions): PageClass {
+    return new PageClass(this, name, objects, options);
+  }
 
-        summon(
-          'chest_minecart',
-          rel(0, 1, 0),
-          { Tags: [this.GUILabel, newGui], Silent: true, Invulnerable: true, NoGravity: true }
+  public registerPage(page: PageClass): PageClass;
+  public registerPage(name: string, objects?: GuiObject[], options?: PageOptions): PageClass;
+  public registerPage(pageOrName: PageClass | string, objects?: GuiObject[], options?: PageOptions): PageClass {
+    const page = typeof pageOrName === 'string' ?
+      this.createPage(pageOrName, objects, options) : pageOrName;
+
+    page.fill();
+    page.click();
+
+    this.pages.push(page);
+    this.pageNames.add(page.getName());
+    this.pageMap.set([page.getName(), page.getId()]);
+
+    return page;
+  }
+
+  public createPaginatedPage(
+    name: string,
+    staticObjects?: GuiObject[],
+    buttons?: Button[],
+    slots?: number[],
+    navigationButtons?: NavigationButtonsOptions,
+    navigationButtonsSound?: SoundEvent,
+  ): PaginatedPage {
+    return new PaginatedPage(
+      this,
+      name,
+      staticObjects,
+      buttons,
+      slots,
+      navigationButtons,
+      navigationButtonsSound,
+    );
+  }
+
+  public registerPaginatedPage(
+    page: PaginatedPage,
+  ): PaginatedPage;
+
+  public registerPaginatedPage(
+    name: string,
+    staticObjects?: GuiObject[],
+    buttons?: Button[],
+    slots?: number[],
+    navigationButtons?: NavigationButtonsOptions,
+    navigationButtonsSound?: SoundEvent,
+  ): PaginatedPage;
+
+  public registerPaginatedPage(
+    pageOrName: PaginatedPage | string,
+    staticObjects?: GuiObject[],
+    buttons?: Button[],
+    slots?: number[],
+    navigationButtons?: NavigationButtonsOptions,
+    navigationButtonsSound?: SoundEvent,
+  ): PaginatedPage {
+    const paginated =
+      typeof pageOrName === 'string'
+        ? this.createPaginatedPage(
+          pageOrName,
+          staticObjects,
+          buttons,
+          slots,
+          navigationButtons,
+          navigationButtonsSound,
         )
+        : pageOrName;
 
-        const globalId = this.Ids('.global')['++']
-        const playerId = this.Ids('@s')
+    paginated.build();
 
-        const guiEntity = Selector('@e', { limit: 1, tag: [this.GUILabel, newGui] })
-        const guiEntityId = this.Ids(guiEntity)
+    return paginated;
+  }
 
-        playerId.set(guiEntityId.set(globalId))
-
-        execute.as(guiEntity).run(() => {
-          this.pageIdScore.set(0)
-        })
-
-        execute.as(guiEntity).run(() => {
-          this.refresh()
-        })
-
-        newGui(guiEntity).remove()
-
-      }
-    ).else(() => {
-
-      tellraw('@s', 'No space, or too close to another GUI')
-
-    })
+  public getData() {
+    return this.data;
   }
 
 
-  /* -------------------------------------------------------------------------- */
-  /*                               PAGE UPDATE                                  */
-  /* -------------------------------------------------------------------------- */
-
-  /**
-   * Regenerates the inventory content for the current page.
-   */
-  defineRefresh(): MCFunctionType {
-
-    return MCFunction(`__gui/${this.name.toLowerCase()}/refresh`, () => {
-
-      Data('entity', '@s').select('Items').remove()
-
-      Data('storage', 'prodiges_skills:gui', 'refresh').select('pageId')
-        .set(this.pageIdScore)
-
-      functionCmd(
-        MCFunction(`__gui/${this.name.toLowerCase()}/pages/fillfindpage`, () => {
-          raw(`$function prodige_skills:__gui/${this.name.toLowerCase()}/pages/fill/$(pageId)`)
-        }),
-        'with',
-        'storage',
-        'prodiges_skills:gui',
-        'refresh'
-      )
-
-    })
-  }
-
-
-  /**
-   * Finds the correct click handler for the current page.
-   */
-  defineClickFinder(): MCFunctionType {
-
-    return MCFunction(`__gui/${this.name.toLowerCase()}/clickfinder`, () => {
-
-      Data('storage', 'prodiges_skills:gui', 'clickFinder').select('pageId')
-        .set(this.pageIdScore)
-
-      functionCmd(
-        MCFunction(`__gui/${this.name.toLowerCase()}/pages/clickfindpage`, () => {
-          raw(`$function prodige_skills:__gui/${this.name.toLowerCase()}/pages/click/$(pageId)`)
-        }),
-        'with',
-        'storage',
-        'prodiges_skills:gui',
-        'clickFinder'
-      )
-
-    })
-  }
-
-
-  /* -------------------------------------------------------------------------- */
-  /*                                PUBLIC API                                  */
-  /* -------------------------------------------------------------------------- */
-
-
-  /**
-   * Switches the GUI to another page.
-   */
-  public toPage(page: PageClass | string) {
-    if (typeof page != 'string') {
-      if (page.id) this.pageIdScore.set(page.id);
-    } else {
-      this.pageIdScore.set(this.pageNameIndex.get(page));
-    }
-  }
 }
 
-
-// loot table
-
-LootTable('minecraft:blocks/yellow_shulker_box', { type: "minecraft:block", pools: [{ rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:item", name: "minecraft:yellow_shulker_box", functions: [{ function: "minecraft:copy_components", source: "block_entity", include: ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], conditions: [{ condition: "minecraft:inverted", term: { condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } } }] }, { rolls: 1, bonus_rolls: 0, entries: [{ type: "minecraft:dynamic", name: "minecraft:contents" }], conditions: [{ condition: "minecraft:match_tool", predicate: { predicates: { "minecraft:custom_data": { drop_contents: 1 } } } }] }], random_sequence: "minecraft:blocks/yellow_shulker_box", __smithed__: { priority: { stage: "early" }, rules: [{ type: "append", target: "pools[0].conditions", source: { type: "reference", path: "pools[0].conditions[0]" } }, { type: "append", target: "pools", source: { type: "reference", path: "pools[1]" } }] } } as any)
+LootTable('minecraft:blocks/yellow_shulker_box', { "type": "minecraft:block", "pools": [{ "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:item", "name": "minecraft:yellow_shulker_box", "functions": [{ "function": "minecraft:copy_components", "source": "block_entity", "include": ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], "conditions": [{ "condition": "minecraft:inverted", "term": { "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } } }] }, { "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:dynamic", "name": "minecraft:contents" }], "conditions": [{ "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } }] }], "random_sequence": "minecraft:blocks/yellow_shulker_box", "__smithed__": { "priority": { "stage": "early" }, "rules": [{ "type": "append", "target": "pools[0].conditions", "source": { "type": "reference", "path": "pools[0].conditions[0]" } }, { "type": "append", "target": "pools", "source": { "type": "reference", "path": "pools[1]" } }] } } as any);

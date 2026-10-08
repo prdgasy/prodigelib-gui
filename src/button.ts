@@ -1,113 +1,89 @@
 import { MCFunction } from "sandstone";
-import { debugLog } from "./debug";
-import type { GUI } from './gui';
-import { MacroArgClass, Macroable } from "./macroArg";
+import type { Gui } from './gui';
+import { MacroArgument, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
 
 export type ButtonOptions = {
   id: Macroable<Item>,
-  slot: Macroable<number>,
+  slot?: Macroable<number>,
   count?: Macroable<number>,
-  name?: Text | Macroable<string>,
-  lore?: (Text | Macroable<string>)[],
+  name?: Macroable<string>,
+  lore?: Macroable<string>[],
   components?: string[],
-  onClick?: MCFunctionType | (() => void),
-  macroArgs?: MacroArgClass[]
+  onClick?: MCFunctionType | (() => void)
 }
 
-export class ButtonClass {
-  static currentButton?: ButtonClass;
-  static pendingArgs: MacroArgClass[] = [];
-  id: Macroable<Item>;
-  slot: Macroable<number>;
-  count: Macroable<number>;
+export class Button {
+  public id: Macroable<Item>;
+  public slot?: Macroable<number>;
+  public count: Macroable<number>;
 
-  name: Text | Macroable<string>;
-  lore: (Text | Macroable<string>)[];
-  components: string[];
+  public name: Macroable<string>;
+  public lore: Macroable<string>[];
+  public components: string[];
 
 
-  onClick?: MCFunctionType | (() => void);
+  public onClick?: MCFunctionType | (() => void);
 
-  macroArgs: MacroArgClass[];
+  private macros: MacroArgument[];
 
-  parent?: GUI;
+  public parentGui!: Gui;
 
-  constructor(options: ButtonOptions) {
+  constructor({ id, slot, count, name, lore, components, onClick }: ButtonOptions) {
 
+    this.id = id;
+    this.slot = slot;
+    this.count = count ?? 1;
+    this.name = name ?? id;
+    this.lore = lore ?? [];
+    this.components = components ?? [];
+    this.onClick = onClick;
 
-    // Set current button before evaluating properties that might contain macros
-    ButtonClass.currentButton = this;
+    this.macros = this.catchArgs(this);
+  }
 
-    this.id = options.id;
-    this.slot = options.slot;
-    this.count = options.count ?? 1;
-    this.name = options.name ?? { text: options.id.toString() };
-    this.lore = options.lore ?? [];
-    this.components = options.components ?? [];
-    this.onClick = options.onClick;
-    this.macroArgs = options.macroArgs ?? [];
+  private catchArgs(obj: any) {
+    const macros: MacroArgument[] = [];
 
-    // pending args injections
-    for (const arg of ButtonClass.pendingArgs) {
-      this.inject(arg);
+    if (!obj) return [];
+
+    if (obj instanceof MacroArgument) return [obj];
+
+    for (const value of Object.values(obj)) {
+      if (typeof value === 'object') macros.push(...this.catchArgs(value));
     }
-    ButtonClass.pendingArgs = [];
 
-    this.catchArgs();
+    return macros;
+  }
 
-    ButtonClass.currentButton = undefined;
+  public inject(arg: MacroArgument) {
+    if (!this.macros.includes(arg)) this.macros.push(arg);
+  }
+
+  public resolveJSONText(text: Macroable<string> | Macroable<string>[]): string {
+    if (Array.isArray(text)) return text.map(l => this.resolveJSONText(l)).join(',');
+
+    if (text instanceof MacroArgument) return text.toString();
+
+    return `{text: "${text}", italic: false, color: "white"}`;
 
   }
 
-  private catchArgs(currentObject: any = this) {
-    if (!currentObject || typeof currentObject !== 'object') return;
-
-
-
-    // 1. Si onClick est une fonction, on l'exécute pour intercepter ses appels à toString() / inject()
-    if (currentObject === this && typeof this.onClick === 'function') {
-      MCFunction(`_`, () => {
-        (this.onClick as () => void)();
-      }, { addToSandstoneCore: false });
-    }
-
-    // 2. Inspection récursive des propriétés
-    for (const value of Object.values(currentObject)) {
-      if (value instanceof MacroArgClass) {
-        if (!this.macroArgs.includes(value)) {
-          this.macroArgs.push(value);
-        }
-      } else if (typeof value === 'object') {
-        this.catchArgs(value);
-      }
-    }
+  public getMacroArgs(): MacroArgument[] {
+    return this.macros;
   }
 
-  inject(arg: MacroArgClass) {
-    if (!this.macroArgs.includes(arg)) this.macroArgs.push(arg);
+  public hasMacro(): boolean {
+    return this.macros.length > 0;
   }
 
-  resolveJSONText(text: Macroable<string> | (Text | Macroable<string>)[] | Text | Text[]): string {
-    if (Array.isArray(text)) {
-      return text.map(l => this.resolveJSONText(l)).join(',');
-    } else if (text instanceof MacroArgClass) {
-      return text.toString();
-    } else if (typeof text === 'string') {
-      return `{text: "${text}", italic: false, color: "white"}`;
-    } else {
-      return `{text: "${text.text}", color: "${text.color ?? 'white'}", italic: ${text.italic ?? 'false'}, bold: ${text.bold ?? 'false'}}`;
-    }
+  public getparentGui(): Gui {
+    return this.parentGui;
   }
 
-  /**
-   * Converts the button into a valid Minecraft item string.
-   */
+  public toString(): string {
 
-  toString(): string {
-    debugLog(`${this.macroArgs.length} macroArg(s) catched:`);
-    debugLog(this.macroArgs)
     let lorePart = '';
     let namePart = '';
     if (this.name) lorePart = ', custom_name=' + this.resolveJSONText(this.name);
@@ -116,18 +92,4 @@ export class ButtonClass {
       + this.components.toString() + namePart + lorePart
       + '] ' + this.count;
   }
-}
-
-// On accepte UN SEUL objet qui contient toutes les propriétés
-export function Button({
-  id,
-  slot,
-  count,
-  name,
-  lore,
-  components,
-  onClick
-}: ButtonOptions): ButtonClass {
-  // On passe les variables au constructeur
-  return new ButtonClass({ id, slot, count, name, lore, components, onClick });
 }

@@ -1,191 +1,160 @@
-import { _, Data, MCFunction, raw } from "sandstone";
-import { ButtonClass } from "./button";
-import { GUI } from "./gui";
-import { MacroArgClass } from "./macroArg";
-import { MCFunctionType, MenuObject } from "./types";
+import { _, Data, DataPointClass, execute, functionCmd, MCFunction, raw, Score, Macro as $, defaultNamespace, comment, Variable } from "sandstone";
+import { Button } from "./button";
+import { Gui } from "./gui";
+import { MacroArgument } from "./macroArg";
+import { MCFunctionType, GuiObject } from "./types";
+import { MacroLiteral } from "sandstone/core";
 
-export class PageClass {
-  parent: GUI;
-  Objects: MenuObject[];
-
-  id: number;
-  isPushed = false;
-  name: string;
-  nameToLower: string;
-
-  currentContext: 'fill' | 'click' | null = null;
-
-  static globalId = 0;
-  static fillMacroCount = 0;
-  static clickMacroCount = 0;
-  static currentPage = this;
-
-  constructor(parent: GUI, name?: string, Objects?: MenuObject[]) {
-    this.parent = parent;
-    this.Objects = Objects ?? [];
-    this.id = PageClass.globalId++;
-    this.name = name ?? `Page_${this.id}`;
-    this.nameToLower = this.name.toLowerCase();
-  }
-
-  linkParent(button: ButtonClass) {
-    if (!button.parent) {
-      button.parent = this.parent;
-      button.components.push(`custom_data={${this.parent.name}: 1b}`);
-    }
-  }
-
-  pushObject(...objects: MenuObject[]) {
-    if (this.isPushed) throw Error(
-      `PRODIGELIB/GUI • Error: Page already pushed. \nTry using pushInstruction() before adding the page (${this.name}) to the menu (${this.parent.name})`);
-
-    this.Objects.push(...objects);
-  }
-
-  /**
-   * Combination of placeItem and detectClick when different action is not needed.
-   * Auto-detects the compilation context to avoid mixing files.
-   */
-  rawEmit(button: ButtonClass) {
-    // 🟢 Si on est en train d'exécuter la boucle de "fill", on ne pose QUE l'item
-    if (this.currentContext === 'fill') {
-      this.placeItem(button);
-    }
-    // 🟢 Si on est en train d'exécuter la boucle de "click", on ne met QUE la détection
-    else if (this.currentContext === 'click') {
-      this.detectClick(button);
-    }
-    // 🟢 Sécurité si appelé en dehors des boucles principales de Sandstone
-    else {
-      console.error("No context");
-    }
-  }
-
-  /**
-   * Generates the function that fills the inventory for a page.
-   */
-  fill(): MCFunctionType {
-    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/fill/${this.id}`, () => {
-      this.currentContext = 'fill';
-      this.Objects.forEach(e => this.readFillElement(e));
-      this.currentContext = null;
-    })
-  }
-
-  readFillElement(e: MenuObject) {
-    if (GUI.isButton(e)) {
-      this.placeItem(e);
-    } else if (typeof e === 'function') {
-      (e as any)(this);
-    } else {
-      e.fill();
-    }
-  }
-
-
-
-  /**
-   * Emit the button to a function
-   * @param button Button emited
-   */
-  placeItem(button: ButtonClass) {
-    // add custom_data if not already
-    this.linkParent(button);
-    if (button.macroArgs && button.macroArgs.length !== 0) {
-      const place = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/place/place_${PageClass.fillMacroCount++}`, () => {
-        raw(`$item replace entity @s container.${button.slot} with ${button.toString()}`);
-      });
-
-      this.setMacroArgs(button);
-      raw(`function ${place.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
-
-    } else {
-      raw(`item replace entity @s container.${button.slot} with ${button.toString()}`);
-    }
-  }
-
-  /**
-   * Sets macro arguments inside storage.
-   */
-  setMacroArgs(button: ButtonClass) {
-    if (button.macroArgs) {
-      button.macroArgs.forEach(argument => {
-        this.parent.macroStorage
-          .select(argument.key)
-          .set(argument.rawValue())
-
-      })
-
-    }
-
-  }
-
-  /**
-   * Generates the click detection function for a page.
-   */
-  click(): MCFunctionType {
-    return MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/click/${this.id}`, () => {
-      this.currentContext = 'click';
-      this.Objects.forEach(e => this.readClickElement(e));
-      this.currentContext = null;
-    })
-  }
-
-  readClickElement(e: MenuObject) {
-    if (GUI.isButton(e)) {
-      this.detectClick(e);
-    } else if (typeof e === 'function') {
-      (e as any)(this);
-    } else {
-      e.click()
-    }
-  }
-
-  /**
-   * Detect the click of the player on a slot and run the associated function button.onClick()
-   * @param button Button clicked on f
-   */
-  detectClick(button: ButtonClass) {
-    if (!button.onClick) return;
-    this.linkParent(button);
-    if (button.onClick && button.macroArgs && button.macroArgs.length !== 0) {
-      const macroCounter = PageClass.clickMacroCount++;
-      const onClickFunction = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/onclick/onclick_${macroCounter}`, () => button.onClick!()
-      );
-
-      const detectMissingItem = MCFunction(`__gui/${this.parent.name.toLowerCase()}/pages/macro/${this.nameToLower}/detect/detect_${macroCounter}`, () => {
-        const detectLine = `execute unless data entity @s Items[{Slot:${button.slot}b}] run function ${onClickFunction.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`;
-
-        if (button.slot instanceof MacroArgClass) raw("$" + detectLine);
-        else raw(detectLine);
-      }
-      );
-
-      this.setMacroArgs(button);
-      raw(`function ${detectMissingItem.toString()} with storage ${this.parent.macroStorage.currentTarget} ${this.parent.macroStorage.path}`);
-
-    } else {
-      _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${button.slot}b}]`))), () => button.onClick!())
-    }
-  }
-
-  /**
-   * Adds a page to the GUI.
-   */
-  public build() {
-    if (this.parent.Pages.includes(this)) throw Error(`The page ${this.name} already exists`);
-
-    this.parent.Pages.push(this);
-    this.parent.pageNameIndex.set(this.name, this.id);
-
-
-    this.fill();
-    this.click();
-
-    this.isPushed = true;
-  }
+export type PageOptions = {
+  paginated?: boolean,
+  main?: boolean,
 }
 
-export function Page(parent: GUI, name?: string, Objects?: MenuObject[]): PageClass {
-  return new PageClass(parent, name, Objects);
+export class PageClass {
+  private parentGui: Gui;
+  private name: string;
+  public objects: GuiObject[];
+  private options: PageOptions;
+
+  private context: 'fill' | 'click' | undefined;
+
+  private id;
+  static id = 0;
+
+  constructor(parentGui: Gui, name?: string, objects?: GuiObject[], options?: PageOptions) {
+    this.parentGui = parentGui;
+    this.name = name ?? `page_anon_${PageClass.id}`;
+    this.objects = objects ?? [];
+    this.options = options ?? {};
+
+    this.id = PageClass.id;
+
+    PageClass.id++;
+  }
+
+  public getId() {
+    return this.id;
+  }
+
+  public static getFunctionPath(parentGui: Gui, page: | number, context: 'fill' | 'click'): string;
+  public static getFunctionPath(parentGui: Gui, page: Score, context: 'fill' | 'click'): MacroLiteral;
+  public static getFunctionPath(parentGui: Gui, page: number | Score, context: 'fill' | 'click') {
+    const guiName = parentGui.name.toLowerCase();
+
+    if (typeof page === 'number') {
+      return `__lib/gui/${guiName}/pages/${page}/${context}`;
+    }
+    return $`${Gui.ns}:__lib/gui/${guiName}/pages/${page}/${context}`;
+  }
+
+  private linkParent(btn: Button) {
+    if (!btn.getparentGui()) {
+      btn.parentGui = this.parentGui;
+      btn.components.push(`custom_data={${this.parentGui.name}: 1b}`);
+    }
+  }
+
+  private registeredMacroArgs(button: Button) {
+    const pairsData = this.parentGui.getData().select(this.name);
+    const keys: DataPointClass[] = [];
+
+    button.getMacroArgs().forEach(a => {
+      const x = pairsData.select(a.key);
+      keys.push(x);
+      x.set(a.getValue())
+    })
+
+    return keys;
+  }
+
+  public emit(btn: Button) {
+    this.linkParent(btn)
+    if (this.context == 'fill') {
+      return this.placeItem(btn);
+    } else if (this.context == 'click') {
+      return this.detectClick(btn);
+    }
+  }
+
+
+
+  // FILL ITEMS
+  fill(): MCFunctionType {
+    return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'fill'), () => {
+      this.context = 'fill';
+      this.objects.forEach(e => this.readFillElement(e));
+      this.context = undefined;
+    })
+  }
+
+  private readFillElement(obj: GuiObject) {
+    if (obj instanceof Button) return this.placeItem(obj);
+    if (typeof obj == 'function') return obj();
+    if ('fill' in obj) return obj.fill!();
+  }
+
+  public placeItem(btn: Button) {
+    if (btn.slot === undefined) throw new Error(
+      `Missing slot parameter for button "${String(btn.name)}" ` +
+      `in page "${this.name}" of GUI "${this.parentGui.name}". ` +
+      `A slot must be provided before the button can be placed.`
+    );
+
+
+    comment(`${this.parentGui.name}::${this.name}::fill -> ${btn.name}(${btn.slot})`);
+    if (!btn.hasMacro()) {
+      return raw(`item replace entity @s container.${btn.slot} with ${btn.toString()}`);
+    }
+
+    return _.with([...this.registeredMacroArgs(btn)], () => {
+      comment(`${this.parentGui.name}::${this.name}::fill::macro -> ${btn.name}(${btn.slot})`);
+      raw(`$item replace entity @s container.${btn.slot} with ${btn.toString()}`);
+    })
+  }
+
+
+  // CLICK DETECTION
+  public click() {
+    return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'click'), () => {
+      this.context = 'click';
+      this.objects.forEach(e => this.readClickElement(e));
+      this.context = undefined;
+    })
+  }
+
+  private readClickElement(obj: GuiObject) {
+    if (obj instanceof Button && obj.onClick != null) return this.detectClick(obj);
+    if (typeof obj === 'function') return obj();
+    if ('click' in obj) return obj.click!();
+  }
+
+  public detectClick(btn: Button) {
+    comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
+
+    if (!(btn.slot instanceof MacroArgument)) return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
+
+    const slot = btn.slot.getValue();
+    return _.with([slot], () => {
+      comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
+
+      $.execute.unless.data.entity('@s', $`Items[{Slot:${slot}b}]`).run(() => { btn.onClick() });
+    })
+
+  }
+
+  public getName(): string {
+    return this.name;
+  }
+
+  public getObjects(): GuiObject[] {
+    return this.objects;
+  }
+
+  public getOptions(): PageOptions {
+    return this.options;
+  }
+
+  public add(...obj: GuiObject[]): number {
+    return this.objects.push(...obj);
+  }
 }

@@ -1,62 +1,121 @@
-import { ButtonClass } from "./button";
+import { DataPointClass, Score } from "sandstone";
 
-export type Macroable<T> = T | MacroArgClass;
+export type Macroable<T> = T | MacroArgument | MacroTemplate;
 
-export class MacroArgClass {
+
+/**
+ * Représente un argument individuel de macro.
+ *
+ * Exemple :
+ *   GuiMacro(Variable(1))
+ *
+ * devient :
+ *   $(macro_arg_0)
+ */
+export class MacroArgument {
   static id = 0;
-  key: string;
-  rawValue: () => any;
+
+  public readonly key: string;
+  private readonly value: () => any;
+
   constructor(value: any) {
-    this.key = `macroArg_${String((MacroArgClass.id++))}`;
-    this.rawValue = typeof value === 'function' ? value : () => value;
+    this.key = `macro_arg_${MacroArgument.id++}`;
+    this.value = () => value;
   }
 
-  get value(): any {
-    return this.rawValue();
+  public getValue(): any {
+    return this.value();
   }
 
-  toString(): string {
-    if (ButtonClass.currentButton) {
-      ButtonClass.currentButton.inject(this);
-    } else {
-      ButtonClass.pendingArgs.push(this);
-    }
+  public toString(): string {
     return `$(${this.key})`;
   }
 }
-// 1. 🟢 On ajoute les surcharges (Overloads) pour guider TypeScript
-export function MacroArg(strings: TemplateStringsArray, ...values: any[]): string;
-export function MacroArg(value: any): MacroArgClass;
 
-// 🟢 Fonction hybride qui gère l'appel normal ET le Tagged Template
-export function MacroArg(stringsOrValue: any, ...values: any[]): any {
-  // 1. Si appelée comme Tagged Template Literal: $`texte ${valeur}`
-  if (Array.isArray(stringsOrValue) && 'raw' in stringsOrValue) {
-    const strings = stringsOrValue as unknown as TemplateStringsArray;
-    let result = strings[0];
 
-    for (let i = 0; i < values.length; i++) {
-      let val = values[i];
+/**
+ * Représente une chaîne contenant éventuellement plusieurs macros.
+ *
+ * Exemple :
+ *
+ *   GuiMacro`num: ${i}, var: ${macroVar}`
+ *
+ * conserve réellement les MacroArgClass à l'intérieur,
+ * au lieu de les transformer immédiatement en simple string.
+ */
+export class MacroTemplate {
+  public readonly strings: readonly string[];
+  public readonly values: any[];
 
-      if (val instanceof MacroArgClass) {
-        // C'est déjà une macro, on ne fait rien de plus
-      } else if (typeof val === 'function' || (val !== null && typeof val === 'object' && !Array.isArray(val))) {
-        // C'est un Score ou un Data Point (objet non array), on l'encapsule !
-        val = new MacroArgClass(val);
+  constructor(
+    strings: readonly string[],
+    values: any[],
+  ) {
+    this.strings = strings;
+    this.values = values;
+  }
+
+  public getMacroArgs(): MacroArgument[] {
+    const macros: MacroArgument[] = [];
+
+    const collect = (value: any) => {
+      if (value instanceof MacroArgument) {
+        if (!macros.includes(value)) {
+          macros.push(value);
+        }
+        return;
       }
 
-      // La concaténation appelle automatiquement val.toString()
-      // Ce qui ajoute la macro aux pendingArgs
-      result += String(val) + strings[i + 1];
+      if (value instanceof MacroTemplate) {
+        for (const arg of value.getMacroArgs()) {
+          if (!macros.includes(arg)) {
+            macros.push(arg);
+          }
+        }
+        return;
+      }
+    };
+
+    for (const value of this.values) {
+      collect(value);
     }
 
-    return result; // Retourne "Level $(macroArg_0)"
+    return macros;
   }
 
-  // 2. Appel classique : $(valeur)
-  if (stringsOrValue instanceof MacroArgClass) {
-    throw Error(`${stringsOrValue} is already a Macro.`);
-  }
+  public toString(): string {
+    let result = this.strings[0];
 
-  return new MacroArgClass(stringsOrValue);
+    for (let i = 0; i < this.values.length; i++) {
+      result += this.values[i].toString();
+      result += this.strings[i + 1];
+    }
+
+    return result;
+  }
+}
+
+
+export function GuiMacro(strings: TemplateStringsArray, ...values: any[]): MacroTemplate;
+export function GuiMacro(value: Score | DataPointClass,): MacroArgument;
+export function GuiMacro(stringsOrValue: TemplateStringsArray | Score | DataPointClass, ...values: any[]): MacroTemplate | MacroArgument {
+  /*
+   * GuiMacro(Variable(...))
+   */
+  if (stringsOrValue instanceof Score || stringsOrValue instanceof DataPointClass) return new MacroArgument(stringsOrValue);
+
+  /*
+   * GuiMacro`...`
+   */
+  const strings = stringsOrValue;
+
+  const convertedValues = values.map(value => {
+    if (value instanceof Score || value instanceof DataPointClass) return new MacroArgument(value);
+    return value;
+  });
+
+  return new MacroTemplate(
+    strings,
+    convertedValues,
+  );
 }

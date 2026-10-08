@@ -1,5 +1,5 @@
-import { give, MCFunction } from 'sandstone';
-import { ButtonClass } from './button';
+import { give, MCFunction, playsound } from 'sandstone';
+import { Button } from './button';
 import { Macroable } from './macroArg';
 
 export type MCFunctionType = ReturnType<typeof MCFunction>;
@@ -20,18 +20,18 @@ export type Text = {
 /**
  * Clickable GUI button
  */
+export type SoundEvent = Parameters<typeof playsound>[0];
 
-
-export type MenuObject = (FillClick | ButtonClass | (() => void));
+export type GuiObject = (FillClick | Button | (() => void));
 
 export type FillClick = {
   /**
    * Set custom instructions inside the fill function
    */
-  fill: () => void;
+  fill?: () => void;
   /**
    * Set custom instructions inside the click function
    */
-  click: () => void;
+  click?: () => void;
 }
 
