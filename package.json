@@ -1,7 +1,7 @@
 {
   "name": "@prodigelib/gui",
   "@prodigelib/gui": "github:prdgasy/prodigelib-gui",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A pack created with Sandstone",
   "type": "module",
   "module": "src/test.ts",
@@ -18,7 +18,8 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@prodigelib/cjmap": "github:prdgasy/cjmap",
     "@prodigelib/uninstaller": "github:prdgasy/uninstaller",
-    "sandstone": "~1.2.32"
+    "sandstone": "~1.2.36"
   }
 }

@@ -131,14 +131,10 @@ export class PageClass {
   public detectClick(btn: Button) {
     comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
 
-    if (btn.hasMacro()) {
-      return _.with(this.registeredMacroArgs(btn), () => {
-        comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
-
-        $.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
-      })
-    }
-
+    if (btn.hasMacro()) return _.with(this.registeredMacroArgs(btn), () => {
+      comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
+      $.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
+    });
 
     return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
 

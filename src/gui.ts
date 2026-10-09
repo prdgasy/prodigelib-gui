@@ -12,7 +12,7 @@ import { PageClass, PageOptions } from './page';
 import { GuiObject, MCFunctionType, SoundEvent } from './types';
 import { VectorClass } from 'sandstone/variables';
 import { DataPack } from 'sandstone/pack';
-import { CJMap } from '../lib/CJMap';
+import { CjMap } from '@prodigelib/cjmap';
 import { NavigationButtonsOptions, PaginatedPage } from './features/paginatedPage';
 import { Uninstaller } from '@prodigelib/uninstaller';
 
@@ -20,18 +20,18 @@ export class Gui {
   public static instances: Gui[] = [];
   public name: string;
   public trigger!: Score;
-  public tag: LabelClass;
+  public tag!: LabelClass;
   public pages: PageClass[] = [];
   private currentItems = Data('entity', '@s', 'Items');
   public static readonly ns = defaultNamespace.toString();
 
   public static storage = Data('storage', `${Gui.ns}:prodigelib`, 'gui');
-  public pageScore: Score;
-  private linkId: ObjectiveClass;
+  public pageScore!: Score;
+  private linkId!: ObjectiveClass;
   private shulkerBoxPos!: VectorClass<any>;
-  private data: DataPointClass;
+  private data!: DataPointClass;
 
-  public pageMap: CJMap<string, number>;
+  public pageMap!: CjMap<string, number>;
 
   public pageNames = new Set<string>();
 
@@ -41,19 +41,24 @@ export class Gui {
   constructor(name?: string, triggerCommandString?: string) {
     Gui.instances.push(this);
     this.name = name ?? `gui_anon_${Gui.globalId++}`;
-    this.defineTrigger(triggerCommandString);
+    this.pageMap = new CjMap([], this.name);
 
-    this.data = Gui.storage.select(this.name);
-    this.pageScore = Objective.create(`__lib.gui.${this.name}.page`)('@s');
+    MCFunction(`__lib/gui/${this.name}/load`, () => {
+      this.defineTrigger(triggerCommandString);
 
-    this.pageMap = new CJMap([], this.name);
+      this.data = Gui.storage.select(this.name);
+      this.pageScore = Objective.create(`__lib.gui.${this.name}.page`)('@s');
 
-    this.linkId = Objective.create(`__lib.gui.${this.name}.id`);
-    this.tag = Label(`__lib.gui.${this.name}` as NonEmptyString);
 
-    this.findLinkedEntitys();
+      this.linkId = Objective.create(`__lib.gui.${this.name}.id`);
+      this.tag = Label(`__lib.gui.${this.name}` as NonEmptyString);
 
-    this.setShulkerBox();
+      this.findLinkedEntitys();
+
+      this.setShulkerBox();
+    }, { runOnLoad: true })
+
+
   }
 
   // == DEFINE FUNCTION & ON LOAD ==
@@ -282,14 +287,16 @@ export class Gui {
   public getData() {
     return this.data;
   }
-}
 
-Uninstaller.register(Gui.name, 'lib', () => {
-  Gui.instances.forEach(gui => {
-    scoreboard.objectives.remove(gui.trigger.objective);
-    scoreboard.objectives.remove(gui.pageScore.objective);
-  });
-  Gui.storage.remove();
-})
+  public static uninstall() {
+    Gui.instances.forEach(gui => {
+      scoreboard.objectives.remove(gui.trigger.objective);
+      scoreboard.objectives.remove(gui.pageScore.objective);
+    });
+    Gui.storage.remove();
+
+    CjMap.uninstall();
+  }
+}
 
 LootTable('minecraft:blocks/yellow_shulker_box', { "type": "minecraft:block", "pools": [{ "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:item", "name": "minecraft:yellow_shulker_box", "functions": [{ "function": "minecraft:copy_components", "source": "block_entity", "include": ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], "conditions": [{ "condition": "minecraft:inverted", "term": { "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } } }] }, { "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:dynamic", "name": "minecraft:contents" }], "conditions": [{ "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } }] }], "random_sequence": "minecraft:blocks/yellow_shulker_box", "__smithed__": { "priority": { "stage": "early" }, "rules": [{ "type": "append", "target": "pools[0].conditions", "source": { "type": "reference", "path": "pools[0].conditions[0]" } }, { "type": "append", "target": "pools", "source": { "type": "reference", "path": "pools[1]" } }] } } as any);
