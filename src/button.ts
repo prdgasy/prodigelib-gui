@@ -66,7 +66,6 @@ export class Button {
     if (text instanceof MacroArgument) return text.toString();
 
     return `{text: "${text}", italic: false, color: "white"}`;
-
   }
 
   public getMacroArgs(): MacroArgument[] {

@@ -18,6 +18,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@prodigelib/uninstaller": "github:prdgasy/uninstaller",
     "sandstone": "~1.2.32"
   }
 }

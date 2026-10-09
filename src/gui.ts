@@ -6,6 +6,7 @@ import {
   defaultNamespace
 } from 'sandstone';
 
+
 import { Button } from './button';
 import { PageClass, PageOptions } from './page';
 import { GuiObject, MCFunctionType, SoundEvent } from './types';
@@ -13,16 +14,19 @@ import { VectorClass } from 'sandstone/variables';
 import { DataPack } from 'sandstone/pack';
 import { CJMap } from '../lib/CJMap';
 import { NavigationButtonsOptions, PaginatedPage } from './features/paginatedPage';
+import { Uninstaller } from '@prodigelib/uninstaller';
 
 export class Gui {
+  public static instances: Gui[] = [];
   public name: string;
   public trigger!: Score;
   public tag: LabelClass;
   public pages: PageClass[] = [];
-  public currentItems = Data('entity', '@s', 'Items');
-  public static ns = defaultNamespace.toString();
+  private currentItems = Data('entity', '@s', 'Items');
+  public static readonly ns = defaultNamespace.toString();
 
-  private currentPage: Score;
+  public static storage = Data('storage', `${Gui.ns}:prodigelib`, 'gui');
+  public pageScore: Score;
   private linkId: ObjectiveClass;
   private shulkerBoxPos!: VectorClass<any>;
   private data: DataPointClass;
@@ -35,11 +39,12 @@ export class Gui {
   static globalId = 0;
 
   constructor(name?: string, triggerCommandString?: string) {
+    Gui.instances.push(this);
     this.name = name ?? `gui_anon_${Gui.globalId++}`;
     this.defineTrigger(triggerCommandString);
 
-    this.data = Data('storage', 'prodigelib:prodigelib', 'gui').select(this.name);
-    this.currentPage = Objective.create(`__lib.gui.${this.name}.page`)('@s');
+    this.data = Gui.storage.select(this.name);
+    this.pageScore = Objective.create(`__lib.gui.${this.name}.page`)('@s');
 
     this.pageMap = new CJMap([], this.name);
 
@@ -133,7 +138,7 @@ export class Gui {
       $.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
     });
 
-    find(this.currentPage);
+    find(this.pageScore);
   }
 
   private onClick() {
@@ -141,7 +146,7 @@ export class Gui {
       $.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'click')}`);
     });
 
-    onClickFn(this.currentPage);
+    onClickFn(this.pageScore);
   }
 
   // == PUBLIC METHOD ==
@@ -171,7 +176,7 @@ export class Gui {
       playerId.set(guiId.set(globalId));
 
       execute.as(gui).run(() => {
-        this.currentPage.set(0)
+        this.pageScore.set(0)
       })
 
       execute.as(gui).run(() => {
@@ -190,7 +195,7 @@ export class Gui {
         `Did you forget to call registerPage() for this page?`
       );
 
-      this.currentPage.set(this.pageMap.get(name));
+      this.pageScore.set(this.pageMap.get(name));
       this.refresh();
     })
 
@@ -277,8 +282,14 @@ export class Gui {
   public getData() {
     return this.data;
   }
-
-
 }
+
+Uninstaller.register(Gui.name, 'lib', () => {
+  Gui.instances.forEach(gui => {
+    scoreboard.objectives.remove(gui.trigger.objective);
+    scoreboard.objectives.remove(gui.pageScore.objective);
+  });
+  Gui.storage.remove();
+})
 
 LootTable('minecraft:blocks/yellow_shulker_box', { "type": "minecraft:block", "pools": [{ "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:item", "name": "minecraft:yellow_shulker_box", "functions": [{ "function": "minecraft:copy_components", "source": "block_entity", "include": ["minecraft:custom_name", "minecraft:container", "minecraft:lock", "minecraft:container_loot"] }] }], "conditions": [{ "condition": "minecraft:inverted", "term": { "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } } }] }, { "rolls": 1, "bonus_rolls": 0, "entries": [{ "type": "minecraft:dynamic", "name": "minecraft:contents" }], "conditions": [{ "condition": "minecraft:match_tool", "predicate": { "sub_predicates": { "minecraft:custom_data": { "drop_contents": 1 } } } }] }], "random_sequence": "minecraft:blocks/yellow_shulker_box", "__smithed__": { "priority": { "stage": "early" }, "rules": [{ "type": "append", "target": "pools[0].conditions", "source": { "type": "reference", "path": "pools[0].conditions[0]" } }, { "type": "append", "target": "pools", "source": { "type": "reference", "path": "pools[1]" } }] } } as any);

@@ -1,15 +1,21 @@
-import { Data, DataPointClass, MCFunction, Score, Variable, _, Macro as $, data, DataVariable, execute } from "sandstone";
+import { Data, DataPointClass, MCFunction, Score, Variable, _, Macro as $, data, DataVariable, execute, defaultNamespace } from "sandstone";
+import { Uninstaller } from "@prodigelib/uninstaller";
 
 type Entry<K extends number | string, V extends number | string> = [K, V];
 
 export class CJMap<K extends number | string, V extends number | string> {
+  public static instances: CJMap<any, any>[] = [];
+  public static moduleName = 'CJMap';
   private map: DataPointClass;
   private args!: DataPointClass;
   private out: DataPointClass;
+  public static readonly ns = defaultNamespace.toString();
   private name: string;
-  private static storage = Data('storage', 'prodigelib:prodigelib', 'map');
+  public static storage = Data('storage', `${this.ns}:prodigelib`, 'map');
   private static id = 0;
+
   constructor(entries?: Entry<K, V>[], name?: string) {
+    CJMap.instances.push(this);
     this.name = name ?? `map_${CJMap.id++}`;
     this.map = CJMap.storage.select(this.name);
     this.args = this.map.select('args');
@@ -52,4 +58,10 @@ export class CJMap<K extends number | string, V extends number | string> {
 
     return this.out;
   }
+
+
 }
+
+Uninstaller.register(CJMap.name, 'lib', () => {
+  CJMap.storage.remove();
+});

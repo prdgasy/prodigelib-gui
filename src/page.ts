@@ -1,7 +1,7 @@
 import { _, Data, DataPointClass, execute, functionCmd, MCFunction, raw, Score, Macro as $, defaultNamespace, comment, Variable } from "sandstone";
 import { Button } from "./button";
 import { Gui } from "./gui";
-import { MacroArgument } from "./macroArg";
+import { MacroArgument, MacroTemplate } from "./macroArg";
 import { MCFunctionType, GuiObject } from "./types";
 import { MacroLiteral } from "sandstone/core";
 
@@ -106,7 +106,7 @@ export class PageClass {
       return raw(`item replace entity @s container.${btn.slot} with ${btn.toString()}`);
     }
 
-    return _.with([...this.registeredMacroArgs(btn)], () => {
+    return _.with(this.registeredMacroArgs(btn), () => {
       comment(`${this.parentGui.name}::${this.name}::fill::macro -> ${btn.name}(${btn.slot})`);
       raw(`$item replace entity @s container.${btn.slot} with ${btn.toString()}`);
     })
@@ -131,14 +131,16 @@ export class PageClass {
   public detectClick(btn: Button) {
     comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
 
-    if (!(btn.slot instanceof MacroArgument)) return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
+    if (btn.hasMacro()) {
+      return _.with(this.registeredMacroArgs(btn), () => {
+        comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
 
-    const slot = btn.slot.getValue();
-    return _.with([slot], () => {
-      comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
+        $.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
+      })
+    }
 
-      $.execute.unless.data.entity('@s', $`Items[{Slot:${slot}b}]`).run(() => { btn.onClick() });
-    })
+
+    return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
 
   }
 

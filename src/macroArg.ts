@@ -2,16 +2,6 @@ import { DataPointClass, Score } from "sandstone";
 
 export type Macroable<T> = T | MacroArgument | MacroTemplate;
 
-
-/**
- * Représente un argument individuel de macro.
- *
- * Exemple :
- *   GuiMacro(Variable(1))
- *
- * devient :
- *   $(macro_arg_0)
- */
 export class MacroArgument {
   static id = 0;
 
@@ -32,17 +22,6 @@ export class MacroArgument {
   }
 }
 
-
-/**
- * Représente une chaîne contenant éventuellement plusieurs macros.
- *
- * Exemple :
- *
- *   GuiMacro`num: ${i}, var: ${macroVar}`
- *
- * conserve réellement les MacroArgClass à l'intérieur,
- * au lieu de les transformer immédiatement en simple string.
- */
 export class MacroTemplate {
   public readonly strings: readonly string[];
   public readonly values: any[];
