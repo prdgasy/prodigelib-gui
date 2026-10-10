@@ -38,7 +38,7 @@ export class Gui {
 
   static globalId = 0;
 
-  constructor(name?: string, triggerCommandString?: string) {
+  constructor(name?: string, triggerCommandString?: string, chatLog = false) {
     Gui.instances.push(this);
     this.name = name ?? `gui_anon_${Gui.globalId++}`;
     this.pageMap = new CjMap([], this.name);
@@ -56,6 +56,8 @@ export class Gui {
       this.findLinkedEntitys();
 
       this.setShulkerBox();
+
+      if (chatLog) tellraw('@a', `§e[GUI/${this.name}] Loaded`);
     }, { runOnLoad: true })
 
 

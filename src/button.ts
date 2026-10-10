@@ -3,15 +3,7 @@ import type { Gui } from './gui';
 import { MacroArgument, Macroable } from "./macroArg";
 import { Item, MCFunctionType, Text } from "./types";
 
-export type ButtonOptions = {
-  id: Macroable<Item>,
-  slot?: Macroable<number>,
-  count?: Macroable<number>,
-  name?: Macroable<string>,
-  lore?: Macroable<string>[],
-  components?: string[],
-  onClick?: MCFunctionType | (() => void)
-}
+
 
 export class Button {
   public id: Macroable<Item>;
@@ -29,7 +21,15 @@ export class Button {
 
   public parentGui!: Gui;
 
-  constructor({ id, slot, count, name, lore, components, onClick }: ButtonOptions) {
+  constructor(
+    id: Macroable<Item>,
+    slot?: Macroable<number>,
+    name?: Macroable<string>,
+    onClick?: MCFunctionType | (() => void),
+    lore?: Macroable<string>[],
+    count?: Macroable<number>,
+    components?: string[],
+  ) {
 
     this.id = id;
     this.slot = slot;
