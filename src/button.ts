@@ -25,8 +25,8 @@ export class Button {
     id: Macroable<Item>,
     slot?: Macroable<number>,
     name?: Macroable<string>,
-    onClick?: MCFunctionType | (() => void),
     lore?: Macroable<string>[],
+    onClick?: MCFunctionType | (() => void),
     count?: Macroable<number>,
     components?: string[],
   ) {
