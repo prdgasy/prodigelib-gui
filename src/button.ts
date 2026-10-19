@@ -80,15 +80,13 @@ export class Button {
 	}
 
 	public toString(): string {
-
 		let customName = '';
 		let lore = '';
 		if (this.name) customName = 'custom_name=' + this.resolveJSONText(this.name);
 		if (this.lore) lore = ', lore=[' + this.resolveJSONText(this.lore) + ']';
 		return this.id + '['
 			+ customName + lore
-			+ this.components.toString()
-			+ `custom_data={${this.name}: 1b}`
+			+ ', ' + this.components.map(s => s + ', ').toString()
 			+ '] ' + this.count;
 	}
 }
