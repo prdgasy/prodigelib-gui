@@ -67,7 +67,7 @@ export class PageClass {
 	public emit(btn: Button) {
 		if (this.context == 'fill') {
 			return this.placeItem(btn);
-		} else if (this.context == 'click') {
+		} else if (this.context == 'click' && btn.onClick) {
 			return this.detectClick(btn);
 		}
 	}
@@ -131,12 +131,14 @@ export class PageClass {
 		this.linkParent(btn);
 		comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
 
+		if (typeof btn.slot === 'number') return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
+
 		const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/click/with_macro`, () => {
 			comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
 			$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
 		});
 		if (btn.hasMacro()) return functionCmd(withMacro, 'with', this.registeredMacroArgs(btn))
-		return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
+
 
 	}
 
