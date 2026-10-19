@@ -31,6 +31,7 @@ export class Gui {
 	private linkId!: ObjectiveClass;
 	private shulkerBoxPos!: VectorClass<any>;
 	private data!: DataPointClass;
+	private colorCode: string;
 
 	public pageMap!: CjMap<string, number>;
 
@@ -39,10 +40,11 @@ export class Gui {
 
 	static globalId = 0;
 
-	constructor(name?: string, triggerCommandString?: string, chatLog = false) {
+	constructor(name?: string, triggerCommandString?: string, colorCode: string = '§e§l', chatLog = false) {
 		Gui.instances.push(this);
 		this.name = name ?? `gui_anon_${Gui.globalId++}`;
 		this.pageMap = new CjMap([], this.name);
+		this.colorCode = colorCode;
 
 		MCFunction(`__lib/gui/${this.name}/load`, () => {
 			this.defineTrigger(triggerCommandString);
@@ -144,24 +146,28 @@ export class Gui {
 
 		const find = MCFunction(`__lib/gui/${this.name.toLowerCase()}/find`, (_loop: any, pageId: Score) => {
 			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
-		});
+		}, { onConflict: 'ignore' });
 
-		find(this.pageScore);
+		return find(this.pageScore);
 	}
 
 	private onClick() {
 		const onClickFn = MCFunction(`__lib/gui/${this.name.toLowerCase()}/on_click`, (_loop: any, pageId: Score) => {
 			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'click')}`);
-		});
+		}, { onConflict: 'ignore' });
 
-		onClickFn(this.pageScore);
+		return onClickFn(this.pageScore);
 	}
 
 	// == PUBLIC METHOD ==
 	public close() {
-		this.linkId('@p').reset();
-		tp(rel(0, -1000, 0));
-		kill('@s');
+		const fn = MCFunction(`__lib/gui/${this.name}/close`, () => {
+			this.linkId('@p').reset();
+			tp(rel(0, -1000, 0));
+			kill('@s');
+		}, { onConflict: 'ignore' });
+
+		return fn();
 	}
 
 	public summon() {
@@ -172,7 +178,7 @@ export class Gui {
 			summon(
 				'chest_minecart',
 				rel(0, 1, 0),
-				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true }
+				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true, CustomName: this.colorCode + this.name }
 			);
 
 			const globalId = this.linkId('.global').add(1);
@@ -205,7 +211,7 @@ export class Gui {
 
 			this.pageScore.set(this.pageMap.get(name));
 			this.refresh();
-		})
+		}, { onConflict: 'ignore' })
 
 		return f();
 	}
@@ -297,7 +303,8 @@ export class Gui {
 			scoreboard.objectives.remove(gui.pageScore.objective);
 		});
 		Gui.storage.remove();
-
+		const pos = 93000 + Gui.globalId++;
+		forceload.remove([pos, pos]);
 		CjMap.uninstall();
 	}
 }

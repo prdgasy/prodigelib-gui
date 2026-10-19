@@ -88,6 +88,7 @@ export class Button {
 		return this.id + '['
 			+ customName + lore
 			+ this.components.toString()
+			+ `custom_data={${this.name}: 1b}`
 			+ '] ' + this.count;
 	}
 }
