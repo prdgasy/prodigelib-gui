@@ -1,4 +1,4 @@
-import { Macro as $, _, comment, Data, DataPointClass, MCFunction, raw, Score } from "sandstone";
+import { Macro as $, _, comment, Data, DataPointClass, functionCmd, MCFunction, raw, Score } from "sandstone";
 import { MacroLiteral } from "sandstone/core";
 import { Button } from "./button";
 import { Gui } from "./gui";
@@ -53,17 +53,15 @@ export class PageClass {
 		}
 	}
 
-	private registeredMacroArgs(button: Button) {
+	private registeredMacroArgs(button: Button): DataPointClass {
 		const pairsData = this.parentGui.getData().select(this.name);
-		const keys: DataPointClass[] = [];
 
 		button.getMacroArgs().forEach(a => {
 			const x = pairsData.select(a.key);
-			keys.push(x);
 			x.set(a.getValue())
 		})
 
-		return keys;
+		return pairsData;
 	}
 
 	public emit(btn: Button) {
@@ -105,10 +103,12 @@ export class PageClass {
 			return raw(`item replace entity @s container.${btn.slot} with ${btn.toString()}`);
 		}
 
-		return _.with(this.registeredMacroArgs(btn), () => {
+		const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/fill/with_macro`, () => {
 			comment(`${this.parentGui.name}::${this.name}::fill::macro -> ${btn.name}(${btn.slot})`);
 			raw(`$item replace entity @s container.${btn.slot} with ${btn.toString()}`);
-		})
+		}, { onConflict: 'rename' });
+
+		functionCmd(withMacro, 'with', this.registeredMacroArgs(btn));
 	}
 
 
@@ -131,11 +131,11 @@ export class PageClass {
 		this.linkParent(btn);
 		comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
 
-		if (btn.hasMacro()) return _.with(this.registeredMacroArgs(btn), () => {
+		const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/click/with_macro`, () => {
 			comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
 			$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
 		});
-
+		if (btn.hasMacro()) return functionCmd(withMacro, 'with', this.registeredMacroArgs(btn))
 		return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
 
 	}
