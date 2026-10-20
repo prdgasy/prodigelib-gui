@@ -80,13 +80,13 @@ export class Button {
 	}
 
 	public toString(): string {
-		let customName = '';
-		let lore = '';
-		if (this.name) customName = 'custom_name=' + this.resolveJSONText(this.name);
-		if (this.lore) lore = ', lore=[' + this.resolveJSONText(this.lore) + ']';
-		return this.id + '['
-			+ customName + lore
-			+ ', ' + this.components.map(s => s + ', ').toString()
-			+ '] ' + this.count;
+		const param: string[] = [];
+
+		if (this.name) param.push('custom_name=' + this.resolveJSONText(this.name));
+		if (this.lore) param.push('lore=[' + this.resolveJSONText(this.lore) + ']');
+		param.push(...this.components);
+		return this.id + '[' +
+			param.join(',') +
+			'] ' + this.count;
 	}
 }
