@@ -1,4 +1,4 @@
-import { Macro as $, _, comment, Data, DataPointClass, functionCmd, MCFunction, raw, Score } from "sandstone";
+import { Macro as $, _, comment, Data, DataPointClass, functionCmd, MCFunction, raw, Score, Variable } from "sandstone";
 import { MacroLiteral } from "sandstone/core";
 import { Button } from "./button";
 import { Gui } from "./gui";
@@ -14,6 +14,7 @@ export class PageClass {
 	private name: string;
 	public objects: GuiObject[];
 	private options: PageOptions;
+	private clicked = Variable(0);
 
 	private context: 'fill' | 'click' | undefined;
 
@@ -116,7 +117,8 @@ export class PageClass {
 	public click() {
 		return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'click'), () => {
 			this.context = 'click';
-			this.objects.forEach(e => this.readClickElement(e));
+			this.clicked.set(0);
+			this.objects.forEach(e => _.if(_.not(this.clicked), () => this.readClickElement(e)));
 			this.context = undefined;
 		})
 	}
@@ -131,15 +133,20 @@ export class PageClass {
 		this.linkParent(btn);
 		comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
 
-		if (typeof btn.slot === 'number') return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => btn.onClick());
+		if (typeof btn.slot === 'number') return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => {
+			btn.onClick();
+			this.clicked.set(1);
+		});
 
 		const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/click/with_macro`, () => {
 			comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
-			$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => { btn.onClick() });
+			$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => {
+				btn.onClick();
+				this.clicked.set(1);
+			});
 		});
-		if (btn.hasMacro()) return functionCmd(withMacro, 'with', this.registeredMacroArgs(btn))
 
-
+		return functionCmd(withMacro, 'with', this.registeredMacroArgs(btn));
 	}
 
 	public getName(): string {
