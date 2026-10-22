@@ -144,7 +144,7 @@ export class PageClass {
 					btn.onClick();
 					this.clicked.set(1);
 				});
-			});
+			}, { onConflict: 'rename' });
 
 			functionCmd(withMacro, 'with', this.registeredMacroArgs(btn));
 		})
