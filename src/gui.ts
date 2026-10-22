@@ -24,15 +24,14 @@ export class Gui {
 	public tag!: LabelClass;
 	public pages: PageClass[] = [];
 	private currentItems = Data('entity', '@s', 'Items');
-	public static readonly ns = defaultNamespace.toString();
+	public static ns = defaultNamespace.toString();
 
 	public static storage = Data('storage', `${Gui.ns}:prodigelib`, 'gui');
 	public pageScore!: Score;
 	private linkId!: ObjectiveClass;
 	private shulkerBoxPos!: VectorClass<any>;
-	private data!: DataPointClass;
-	private colorCode: string;
-
+	public data!: DataPointClass;
+	public title: string;
 	public pageMap!: CjMap<string, number>;
 
 	public pageNames = new Set<string>();
@@ -40,11 +39,12 @@ export class Gui {
 
 	static globalId = 0;
 
-	constructor(name?: string, triggerCommandString?: string, colorCode: string = '§e§l', chatLog = false) {
+	constructor(name?: string, triggerCommandString?: string, chatLog = false) {
 		Gui.instances.push(this);
-		this.name = name ?? `gui_anon_${Gui.globalId++}`;
+		this.title = name ?? `§dMenu ${Gui.globalId++}`;
+		this.name = Gui.toResource(this.title);
 		this.pageMap = new CjMap([], this.name);
-		this.colorCode = colorCode;
+
 
 		MCFunction(`__lib/gui/${this.name}/load`, () => {
 			this.defineTrigger(triggerCommandString);
@@ -148,11 +148,12 @@ export class Gui {
 			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
 		}, { onConflict: 'ignore' });
 
+		tellraw('@p', this.pageScore);
 		return find(this.pageScore);
 	}
 
 	private onClick() {
-		const onClickFn = MCFunction(`__lib/gui/${this.name.toLowerCase()}/on_click`, (_loop: any, pageId: Score) => {
+		const onClickFn = MCFunction(`__lib/gui/${this.name}/on_click`, (_loop: any, pageId: Score) => {
 			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'click')}`);
 		}, { onConflict: 'ignore' });
 
@@ -178,7 +179,7 @@ export class Gui {
 			summon(
 				'chest_minecart',
 				rel(0, 1, 0),
-				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true, CustomName: this.colorCode + this.name }
+				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true, CustomName: this.name }
 			);
 
 			const globalId = this.linkId('.global').add(1);
@@ -293,10 +294,15 @@ export class Gui {
 		return paginated;
 	}
 
-	public getData() {
-		return this.data;
+	public static toResource(s: string): string {
+		return s
+			.replace(/§./g, '')
+			.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+			.trim()
+			.toLowerCase()
+			.replace(/\s+/g, '_')
+			.replace(/[^a-z0-9_.\-\/]/g, '');
 	}
-
 	public static uninstall() {
 		Gui.instances.forEach(gui => {
 			scoreboard.objectives.remove(gui.trigger.objective);

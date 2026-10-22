@@ -39,7 +39,7 @@ export class PageClass {
 	public static getFunctionPath(parentGui: Gui, page: | number, context: 'fill' | 'click'): string;
 	public static getFunctionPath(parentGui: Gui, page: Score, context: 'fill' | 'click'): MacroLiteral;
 	public static getFunctionPath(parentGui: Gui, page: number | Score, context: 'fill' | 'click') {
-		const guiName = parentGui.name.toLowerCase();
+		const guiName = parentGui.name;
 
 		if (typeof page === 'number') {
 			return `__lib/gui/${guiName}/pages/${page}/${context}`;
@@ -55,7 +55,7 @@ export class PageClass {
 	}
 
 	private registeredMacroArgs(button: Button): DataPointClass {
-		const pairsData = this.parentGui.getData().select(this.name);
+		const pairsData = this.parentGui.data.select(this.name);
 
 		button.getMacroArgs().forEach(a => {
 			const x = pairsData.select(a.key);
