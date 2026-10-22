@@ -118,7 +118,7 @@ export class PageClass {
 		return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'click'), () => {
 			this.context = 'click';
 			this.clicked.set(0);
-			this.objects.forEach(e => _.if(_.not(this.clicked), () => this.readClickElement(e)));
+			this.objects.forEach(e => this.readClickElement(e));
 			this.context = undefined;
 		})
 	}
@@ -132,21 +132,23 @@ export class PageClass {
 	public detectClick(btn: Button) {
 		this.linkParent(btn);
 		comment(`${this.parentGui.name}::${this.name}::click -> ${btn.name}(${btn.slot})`);
-
-		if (typeof btn.slot === 'number') return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => {
-			btn.onClick();
-			this.clicked.set(1);
-		});
-
-		const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/click/with_macro`, () => {
-			comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
-			$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => {
+		return _.if(_.not(this.clicked), () => {
+			if (typeof btn.slot === 'number') return _.if(_.not(_.data(Data('entity', '@s', `Items[{Slot:${btn.slot}b}]`))), () => {
 				btn.onClick();
 				this.clicked.set(1);
 			});
-		});
 
-		return functionCmd(withMacro, 'with', this.registeredMacroArgs(btn));
+			const withMacro = MCFunction(`__lib/gui/${this.parentGui.name}/pages/${this.id}/click/with_macro`, () => {
+				comment(`${this.parentGui.name}::${this.name}::click::macro -> ${btn.name}(${btn.slot})`);
+				$.execute.unless.data.entity('@s', `Items[{Slot:${btn.slot}b}]`).run(() => {
+					btn.onClick();
+					this.clicked.set(1);
+				});
+			});
+
+			functionCmd(withMacro, 'with', this.registeredMacroArgs(btn));
+		})
+
 	}
 
 	public getName(): string {
