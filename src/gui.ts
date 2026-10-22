@@ -148,7 +148,6 @@ export class Gui {
 			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
 		}, { onConflict: 'ignore' });
 
-		tellraw('@p', this.pageScore);
 		return find(this.pageScore);
 	}
 
