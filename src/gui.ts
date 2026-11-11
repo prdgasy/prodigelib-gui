@@ -3,6 +3,7 @@ import {
 	_, abs, Data, DataPointClass,
 	defaultNamespace,
 	execute, forceload,
+	functionCmd,
 	kill, Label, LabelClass,
 	LootTable,
 	MCFunction, NonEmptyString, Objective, ObjectiveClass,
@@ -14,7 +15,7 @@ import { CjMap } from '@prodigelib/cjmap';
 import { VectorClass } from 'sandstone/variables';
 import { Button } from './button';
 import { NavigationButtonsOptions, PaginatedPage } from './features/paginatedPage';
-import { PageClass, PageOptions } from './page';
+import { Page, PageOptions } from './page';
 import { GuiObject, MCFunctionType, SoundEvent } from './types';
 
 export class Gui {
@@ -22,7 +23,7 @@ export class Gui {
 	public name: string;
 	public trigger!: Score;
 	public tag!: LabelClass;
-	public pages: PageClass[] = [];
+	public pages: Page[] = [];
 	private currentItems = Data('entity', '@s', 'Items');
 	public static ns = defaultNamespace.toString();
 
@@ -143,17 +144,19 @@ export class Gui {
 	// == ON UPDATE ==
 	private refresh() {
 		this.currentItems.remove();
+		const storage = Data('storage', `${Gui.ns}:gui`, 'refresh');
+		storage.select('page').set(this.pageScore);
 
-		const find = MCFunction(`__lib/gui/${this.name.toLowerCase()}/find`, (_loop: any, pageId: Score) => {
-			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'fill')}`);
+		const find = MCFunction(`__lib/gui/${this.name.toLowerCase()}/find`, () => {
+			$.functionCmd($`${Page.getFunctionPath(this, this.pageScore, 'fill')}`);
 		}, { onConflict: 'ignore' });
 
-		return find(this.pageScore);
+		return functionCmd(find, 'with', storage);
 	}
 
 	private onClick() {
 		const onClickFn = MCFunction(`__lib/gui/${this.name}/on_click`, (_loop: any, pageId: Score) => {
-			$.functionCmd($`${PageClass.getFunctionPath(this, pageId, 'click')}`);
+			$.functionCmd($`${Page.getFunctionPath(this, pageId, 'click')}`);
 		}, { onConflict: 'ignore' });
 
 		return onClickFn(this.pageScore);
@@ -178,7 +181,7 @@ export class Gui {
 			summon(
 				'chest_minecart',
 				rel(0, 1, 0),
-				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true, CustomName: this.name }
+				{ Tags: [this.tag, newTag], Silent: true, Invulnerable: true, NoGravity: true, CustomName: this.title }
 			);
 
 			const globalId = this.linkId('.global').add(1);
@@ -201,9 +204,9 @@ export class Gui {
 		}).else.run.tellraw('@s', 'No space, or too close to another GUI');
 	}
 
-	public switch(page: string | PageClass) {
+	public switch(page: string | Page) {
 		const name = typeof page === 'string' ? page : page.getName();
-		const f = MCFunction(`__lib/gui/${this.name.toLowerCase()}/switch/${name.toLowerCase()}`, () => {
+		const f = MCFunction(`__lib/gui/${this.name}/switch/${Gui.toResource(name)}`, () => {
 			if (!this.pageNames.has(name)) throw new Error(
 				`Page "${name}" not found in GUI "${this.name}". ` +
 				`Did you forget to call registerPage() for this page?`
@@ -216,13 +219,13 @@ export class Gui {
 		return f();
 	}
 
-	public createPage(name: string, objects?: GuiObject[], options?: PageOptions): PageClass {
-		return new PageClass(this, name, objects, options);
+	public createPage(name: string, objects?: GuiObject[], options?: PageOptions): Page {
+		return new Page(this, name, objects, options);
 	}
 
-	public registerPage(page: PageClass): PageClass;
-	public registerPage(name: string, objects?: GuiObject[], options?: PageOptions): PageClass;
-	public registerPage(pageOrName: PageClass | string, objects?: GuiObject[], options?: PageOptions): PageClass {
+	public registerPage(page: Page): Page;
+	public registerPage(name: string, objects?: GuiObject[], options?: PageOptions): Page;
+	public registerPage(pageOrName: Page | string, objects?: GuiObject[], options?: PageOptions): Page {
 		const page = typeof pageOrName === 'string' ?
 			this.createPage(pageOrName, objects, options) : pageOrName;
 
@@ -234,63 +237,6 @@ export class Gui {
 		this.pageMap.set([page.getName(), page.getId()]);
 
 		return page;
-	}
-
-	public createPaginatedPage(
-		name: string,
-		staticObjects?: GuiObject[],
-		buttons?: Button[],
-		slots?: number[],
-		navigationButtons?: NavigationButtonsOptions,
-		navigationButtonsSound?: SoundEvent,
-	): PaginatedPage {
-		return new PaginatedPage(
-			this,
-			name,
-			staticObjects,
-			buttons,
-			slots,
-			navigationButtons,
-			navigationButtonsSound,
-		);
-	}
-
-	public registerPaginatedPage(
-		page: PaginatedPage,
-	): PaginatedPage;
-
-	public registerPaginatedPage(
-		name: string,
-		staticObjects?: GuiObject[],
-		buttons?: Button[],
-		slots?: number[],
-		navigationButtons?: NavigationButtonsOptions,
-		navigationButtonsSound?: SoundEvent,
-	): PaginatedPage;
-
-	public registerPaginatedPage(
-		pageOrName: PaginatedPage | string,
-		staticObjects?: GuiObject[],
-		buttons?: Button[],
-		slots?: number[],
-		navigationButtons?: NavigationButtonsOptions,
-		navigationButtonsSound?: SoundEvent,
-	): PaginatedPage {
-		const paginated =
-			typeof pageOrName === 'string'
-				? this.createPaginatedPage(
-					pageOrName,
-					staticObjects,
-					buttons,
-					slots,
-					navigationButtons,
-					navigationButtonsSound,
-				)
-				: pageOrName;
-
-		paginated.build();
-
-		return paginated;
 	}
 
 	public static toResource(s: string): string {

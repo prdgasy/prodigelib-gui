@@ -9,7 +9,7 @@ export type PageOptions = {
 	main?: boolean,
 }
 
-export class PageClass {
+export class Page {
 	private parentGui: Gui;
 	private name: string;
 	public objects: GuiObject[];
@@ -23,28 +23,27 @@ export class PageClass {
 
 	constructor(parentGui: Gui, name?: string, objects?: GuiObject[], options?: PageOptions) {
 		this.parentGui = parentGui;
-		this.name = name ?? `page_anon_${PageClass.id}`;
+		this.name = name ? Gui.toResource(name) : `page_anon_${Page.id}`;
 		this.objects = objects ?? [];
 		this.options = options ?? {};
 
-		this.id = PageClass.id;
+		this.id = Page.id;
 
-		PageClass.id++;
+		Page.id++;
 	}
 
 	public getId() {
 		return this.id;
 	}
 
-	public static getFunctionPath(parentGui: Gui, page: | number, context: 'fill' | 'click'): string;
-	public static getFunctionPath(parentGui: Gui, page: Score, context: 'fill' | 'click'): MacroLiteral;
-	public static getFunctionPath(parentGui: Gui, page: number | Score, context: 'fill' | 'click') {
+
+	public static getFunctionPath(parentGui: Gui, page: number | Score, context: 'fill' | 'click'): string {
 		const guiName = parentGui.name;
 
 		if (typeof page === 'number') {
 			return `__lib/gui/${guiName}/pages/${page}/${context}`;
 		}
-		return $`${Gui.ns}:__lib/gui/${guiName}/pages/${page}/${context}`;
+		return `${Gui.ns}:__lib/gui/${guiName}/pages/$(page)/${context}`;
 	}
 
 	private linkParent(btn: Button) {
@@ -77,7 +76,7 @@ export class PageClass {
 
 	// FILL ITEMS
 	fill(): MCFunctionType {
-		return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'fill'), () => {
+		return MCFunction(Page.getFunctionPath(this.parentGui, this.id, 'fill'), () => {
 			this.context = 'fill';
 			this.objects.forEach(e => this.readFillElement(e));
 			this.context = undefined;
@@ -115,7 +114,7 @@ export class PageClass {
 
 	// CLICK DETECTION
 	public click() {
-		return MCFunction(PageClass.getFunctionPath(this.parentGui, this.id, 'click'), () => {
+		return MCFunction(Page.getFunctionPath(this.parentGui, this.id, 'click'), () => {
 			this.context = 'click';
 			this.clicked.set(0);
 			this.objects.forEach(e => this.readClickElement(e));
@@ -163,7 +162,8 @@ export class PageClass {
 		return this.options;
 	}
 
-	public add(...obj: GuiObject[]): number {
-		return this.objects.push(...obj);
+	public add(...obj: GuiObject[]): Page {
+		this.objects.push(...obj);
+		return this;
 	}
 }
