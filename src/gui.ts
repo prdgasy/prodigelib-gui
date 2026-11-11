@@ -155,11 +155,14 @@ export class Gui {
 	}
 
 	private onClick() {
-		const onClickFn = MCFunction(`__lib/gui/${this.name}/on_click`, (_loop: any, pageId: Score) => {
-			$.functionCmd($`${Page.getFunctionPath(this, pageId, 'click')}`);
+		const storage = Data('storage', `${Gui.ns}:gui`, 'on_click');
+		storage.select('page').set(this.pageScore);
+
+		const onClickFn = MCFunction(`__lib/gui/${this.name}/on_click`, () => {
+			$.functionCmd($`${Page.getFunctionPath(this, this.pageScore, 'click')}`);
 		}, { onConflict: 'ignore' });
 
-		return onClickFn(this.pageScore);
+		return functionCmd(onClickFn, 'with', storage);
 	}
 
 	// == PUBLIC METHOD ==
