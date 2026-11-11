@@ -205,7 +205,7 @@ export class Gui {
 	}
 
 	public switch(page: string | Page) {
-		const name = typeof page === 'string' ? page : page.getName();
+		const name = Gui.toResource(typeof page === 'string' ? page : page.getName());
 		const f = MCFunction(`__lib/gui/${this.name}/switch/${Gui.toResource(name)}`, () => {
 			if (!this.pageNames.has(name)) throw new Error(
 				`Page "${name}" not found in GUI "${this.name}". ` +
